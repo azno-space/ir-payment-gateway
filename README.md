@@ -18,7 +18,7 @@ A standalone, database-free Iranian payment gateway service supporting **Zibal**
 ## Quick Start
 
 ```bash
-git clone https://github.com/your-org/ir-payment-gateway.git
+git clone https://github.com/azno-space/ir-payment-gateway.git
 cd ir-payment-gateway
 cp .env.example .env
 # Edit .env with your credentials
@@ -209,7 +209,7 @@ The last gateway in the chain gets longer timeouts (`GATEWAY_LAST_TIMEOUT_MS`) a
 
 ## Webhook Retry Queue
 
-If `PAYMENT_SUCCESS_WEBHOOK_URL` returns a non-2xx response or times out, the payload is saved to `data/payment-queue.json` and retried automatically with exponential back-off. You can inspect the queue at `GET /api/test/queue` (non-production).
+If `PAYMENT_SUCCESS_WEBHOOK_URL` returns a non-200 response or times out, the payload is saved to `data/payment-queue.json` and retried automatically with exponential back-off. You can inspect the queue at `GET /api/test/queue` (non-production).
 
 ---
 

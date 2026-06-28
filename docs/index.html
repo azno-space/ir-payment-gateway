@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl" data-lang="fa">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ir-payment-gateway — راهنمای توسعه‌دهنده</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue:#4278DF; --blue-dk:#2159C4; --blue-mid:#A1BCEF; --blue-lt:#EEF3FC;
+  --black:#2B456E; --gray-dk:#667A99; --gray:#A3AFC2; --gray-lt:#D0D7E1;
+  --l1:#E5E9F0; --l2:#EFF1F6; --l3:#F5F7FA;
+  --green:#1EC1C3; --green-dk:#1AA7A8; --green-lt:#E4F7F7;
+  --red:#F86F8C; --red-dk:#E55070; --red-lt:#FEEDF1;
+  --yellow:#EBAA45; --yellow-lt:#FCF4E8;
+  --sw:260px; --hh:60px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Vazirmatn','Inter',sans-serif;background:var(--l3);color:var(--black);line-height:1.7;font-size:15px}
+[data-lang="en"] *{direction:ltr}
+
+/* scrollbar */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--l2)}
+::-webkit-scrollbar-thumb{background:var(--gray-lt);border-radius:4px}
+
+/* ── TOPBAR ── */
+.topbar{
+  position:fixed;top:0;left:0;right:0;z-index:200;height:var(--hh);
+  background:rgba(255,255,255,0.92);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--l1);
+  display:flex;align-items:center;padding:0 20px;gap:12px;
+}
+.menu-btn{
+  display:none;width:40px;height:40px;border:none;background:none;cursor:pointer;
+  border-radius:10px;align-items:center;justify-content:center;color:var(--black);
+  transition:background .15s;
+}
+.menu-btn:hover{background:var(--l1)}
+.topbar-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+.topbar-logo img{width:32px;height:32px;border-radius:9px}
+.topbar-logo code{font-size:13px;font-family:'JetBrains Mono',monospace;color:var(--blue);background:var(--blue-lt);padding:2px 8px;border-radius:6px}
+.topbar-right{margin-inline-start:auto;display:flex;align-items:center;gap:8px}
+.badge-os{background:var(--green-lt);color:var(--green-dk);font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px}
+.lang-toggle{display:flex;border:1.5px solid var(--l1);border-radius:8px;overflow:hidden}
+.lang-btn{padding:5px 13px;font-size:13px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--gray-dk);transition:all .18s;white-space:nowrap}
+.lang-btn.active{background:var(--blue);color:#fff}
+
+/* ── OVERLAY ── */
+.sidebar-overlay{display:none;position:fixed;top:var(--hh);left:0;right:0;bottom:0;z-index:149;background:rgba(0,0,0,0.4)}
+.sidebar-overlay.open{display:block}
+
+/* ── SIDEBAR ── */
+.sidebar{
+  width:var(--sw);flex-shrink:0;
+  position:fixed;top:var(--hh);bottom:0;
+  right:0; /* RTL: sidebar on right */
+  left:auto;
+  overflow-y:auto;background:#fff;
+  border-left:1px solid var(--l1);
+  padding:16px 0;z-index:150;
+  transition:right .28s cubic-bezier(.4,0,.2,1), left .28s cubic-bezier(.4,0,.2,1);
+}
+/* LTR: sidebar on left */
+[data-lang="en"] .sidebar{right:auto;left:0;border-left:none;border-right:1px solid var(--l1)}
+.sidebar-section{margin-bottom:2px}
+.sidebar-title{font-size:10px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.1em;padding:10px 20px 4px}
+.sidebar-link{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 20px;font-size:13.5px;font-weight:500;color:var(--gray-dk);
+  text-decoration:none;transition:all .15s;
+  border-inline-start:3px solid transparent;
+}
+.sidebar-link svg{width:16px;height:16px;flex-shrink:0;opacity:.65}
+.sidebar-link:hover{background:var(--l3);color:var(--blue)}
+.sidebar-link.active{color:var(--blue);background:var(--blue-lt);border-inline-start-color:var(--blue)}
+.sidebar-link.active svg{opacity:1}
+
+/* ── LAYOUT ── */
+.layout{display:flex;padding-top:var(--hh);min-height:100vh}
+/* RTL: sidebar on right → push content from right */
+.main{flex:1;margin-right:var(--sw);margin-left:0;padding:44px 52px;max-width:920px}
+/* LTR: sidebar on left → push content from left */
+[data-lang="en"] .main{margin-right:0;margin-left:var(--sw)}
+
+/* ── HERO ── */
+.hero{
+  background:linear-gradient(140deg,var(--blue) 0%,var(--blue-dk) 100%);
+  border-radius:20px;padding:52px 44px;margin-bottom:52px;
+  position:relative;overflow:hidden;
+}
+.hero::before{content:'';position:absolute;top:-50px;inset-inline-end:-50px;width:300px;height:300px;border-radius:50%;background:rgba(255,255,255,.05)}
+.hero::after{content:'';position:absolute;bottom:-70px;inset-inline-start:15%;width:220px;height:220px;border-radius:50%;background:rgba(255,255,255,.035)}
+.hero-inner{position:relative;z-index:1;display:flex;align-items:flex-start;gap:28px}
+.hero-logo{width:68px;height:68px;border-radius:16px;background:rgba(255,255,255,.14);padding:10px;flex-shrink:0}
+.hero-logo img{width:100%;height:100%;object-fit:contain}
+.hero-text h1{font-size:30px;font-weight:700;color:#fff;line-height:1.25;margin-bottom:10px}
+.hero-text p{font-size:15px;color:rgba(255,255,255,.78);max-width:520px;line-height:1.75}
+.hero-badges{display:flex;flex-wrap:wrap;gap:7px;margin-top:18px}
+.hero-badge{background:rgba(255,255,255,.14);color:rgba(255,255,255,.9);font-size:11.5px;font-weight:600;padding:4px 12px;border-radius:20px;border:1px solid rgba(255,255,255,.2)}
+
+/* ── SECTION ── */
+.section{margin-bottom:60px;scroll-margin-top:76px}
+.section-title{font-size:21px;font-weight:700;color:var(--black);margin-bottom:6px;padding-bottom:12px;border-bottom:2px solid var(--blue-lt);display:flex;align-items:center;gap:10px}
+.section-title .dot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0}
+.section-sub{color:var(--gray-dk);margin-bottom:24px;font-size:14.5px}
+
+/* ── CARDS ── */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.card{background:#fff;border-radius:14px;padding:22px 18px;border:1px solid var(--l1);transition:border-color .2s,transform .2s}
+.card:hover{border-color:var(--blue-mid);transform:translateY(-2px)}
+.ci{width:42px;height:42px;border-radius:11px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+.ci.blue{background:var(--blue-lt);color:var(--blue)}
+.ci.green{background:var(--green-lt);color:var(--green-dk)}
+.ci.yellow{background:var(--yellow-lt);color:var(--yellow)}
+.ci.red{background:var(--red-lt);color:var(--red-dk)}
+.ci svg{width:20px;height:20px}
+.card h3{font-size:14.5px;font-weight:700;color:var(--black);margin-bottom:5px}
+.card p{font-size:13px;color:var(--gray-dk);line-height:1.6}
+
+/* ── STEPS ── */
+.steps{display:flex;flex-direction:column}
+.step{display:flex;gap:18px;position:relative;padding-bottom:28px}
+.step:last-child{padding-bottom:0}
+.step-left{display:flex;flex-direction:column;align-items:center;flex-shrink:0}
+.step-num{width:34px;height:34px;border-radius:50%;background:var(--blue);color:#fff;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;z-index:1}
+.step-line{flex:1;width:2px;background:var(--l1);margin-top:4px;min-height:20px}
+.step:last-child .step-line{display:none}
+.step-content{padding-top:5px;flex:1}
+.step-content h4{font-size:14.5px;font-weight:700;color:var(--black);margin-bottom:8px}
+.step-content p{font-size:13.5px;color:var(--gray-dk);margin-bottom:8px}
+
+/* ── CODE ── */
+.code-block{background:#1a2332;border-radius:12px;margin:10px 0;overflow:hidden}
+.code-header{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;background:rgba(255,255,255,.04);border-bottom:1px solid rgba(255,255,255,.07)}
+.code-lang{font-size:10.5px;font-weight:600;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.08em}
+.copy-btn{font-size:10.5px;font-weight:600;color:rgba(255,255,255,.38);background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);padding:3px 9px;border-radius:6px;cursor:pointer;transition:all .18s}
+.copy-btn:hover{background:rgba(255,255,255,.12);color:rgba(255,255,255,.8)}
+.copy-btn.copied{color:#6ee7b7;border-color:#6ee7b7}
+pre{padding:18px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.75;direction:ltr;text-align:left;color:#cdd5e0;font-variant-ligatures:none}
+.kw{color:#c792ea}.str{color:#c3e88d}.key{color:#82aaff}.val{color:#f78c6c}.cmt{color:#6b8aa0}.fn{color:#89ddff}.num{color:#f78c6c}.var{color:#eeffff}
+
+/* ── TABS ── */
+.tabs{margin:14px 0}
+.tab-nav{display:flex;gap:3px;flex-wrap:wrap;margin-bottom:0}
+.tab-btn{padding:7px 15px;font-size:12.5px;font-weight:600;border:1.5px solid var(--l1);border-radius:8px 8px 0 0;background:var(--l2);color:var(--gray-dk);cursor:pointer;transition:all .15s;border-bottom:none}
+.tab-btn.active{background:#1a2332;color:#fff;border-color:#1a2332}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.tab-content .code-block{border-start-start-radius:0;border-start-end-radius:12px;border-end-start-radius:12px;border-end-end-radius:12px;margin-top:0}
+
+/* ── ENV TABLE ── */
+.env-table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+.env-table th{text-align:start;font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.06em;padding:9px 13px;background:var(--l2);border-bottom:2px solid var(--l1)}
+.env-table td{padding:11px 13px;border-bottom:1px solid var(--l1);vertical-align:top}
+.env-table tr:last-child td{border-bottom:none}
+.env-table tr:hover td{background:var(--l3)}
+.env-key{font-family:'JetBrains Mono',monospace;font-size:11.5px;color:var(--blue);font-weight:500;white-space:nowrap}
+.env-desc{color:var(--gray-dk)}
+.env-default{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--gray)}
+.req{display:inline-block;font-size:10px;font-weight:700;background:var(--red-lt);color:var(--red-dk);padding:2px 6px;border-radius:4px}
+.opt{display:inline-block;font-size:10px;font-weight:700;background:var(--l2);color:var(--gray);padding:2px 6px;border-radius:4px}
+
+/* ── ENDPOINT ── */
+.endpoint{background:#fff;border-radius:14px;border:1px solid var(--l1);margin-bottom:20px;overflow:hidden}
+.endpoint-header{display:flex;align-items:center;gap:10px;padding:14px 18px;border-bottom:1px solid var(--l1);background:var(--l3);flex-wrap:wrap;gap:8px}
+.method{font-family:'JetBrains Mono',monospace;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:6px;white-space:nowrap}
+.method.POST{background:#dbeafe;color:#1d4ed8}
+.method.GET{background:#d1fae5;color:#065f46}
+.endpoint-path{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--black);font-weight:500;word-break:break-all}
+.endpoint-body{padding:18px}
+.param-table{width:100%;border-collapse:collapse}
+.param-table th{font-size:11px;font-weight:700;color:var(--gray);text-transform:uppercase;letter-spacing:.05em;text-align:start;padding:6px 10px;border-bottom:1px solid var(--l1)}
+.param-table td{padding:9px 10px;font-size:13px;border-bottom:1px solid var(--l2)}
+.param-table tr:last-child td{border:none}
+.pname{font-family:'JetBrains Mono',monospace;color:var(--black);font-size:12px}
+.ptype{font-family:'JetBrains Mono',monospace;color:var(--green-dk);font-size:12px}
+.pdesc{color:var(--gray-dk)}
+
+/* ── FLOW DIAGRAM ── */
+.flow-diagram{margin:24px 0 4px;background:#fff;border-radius:16px;border:1px solid var(--l1);padding:32px 24px}
+.flow-steps{display:grid;grid-template-columns:1fr 52px 1fr 52px 1fr 52px 1fr;align-items:start}
+.flow-step{display:flex;flex-direction:column;align-items:center}
+.fi{width:60px;height:60px;border-radius:18px;display:flex;align-items:center;justify-content:center;transition:transform .2s}
+.fi:hover{transform:translateY(-3px)}
+.fi svg{width:26px;height:26px}
+.fi.blue{background:var(--blue);box-shadow:0 8px 20px rgba(66,120,223,.28)}
+.fi.teal{background:var(--green);box-shadow:0 8px 20px rgba(30,193,195,.24)}
+.fi.white{background:#fff;border:1.5px solid var(--l1);box-shadow:0 3px 12px rgba(43,69,110,.07)}
+.fi.blue-lt{background:var(--blue-lt);border:1.5px solid var(--blue-mid)}
+.flow-label{margin-top:10px;text-align:center}
+.flow-label .ft{font-size:12.5px;font-weight:700;color:var(--black)}
+.flow-label .fs{font-size:11px;color:var(--gray-dk);margin-top:2px}
+.fi.blue+.flow-label .ft,.fi.teal+.flow-label .ft{color:var(--black)}
+.flow-conn{display:flex;align-items:center;justify-content:center;padding-top:18px}
+.flow-conn svg{overflow:visible}
+.flow-nums{display:grid;grid-template-columns:1fr 52px 1fr 52px 1fr 52px 1fr;margin-top:16px}
+.fn-label{text-align:center;font-size:11px;font-weight:700;padding:3px 0;border-radius:5px}
+.fn-label.blue{color:var(--blue);background:var(--blue-lt)}
+.fn-label.gray{color:var(--gray-dk)}
+.fn-label.green{color:var(--green-dk);background:var(--green-lt)}
+
+/* Flow mobile: vertical */
+.flow-mobile{display:none;flex-direction:column;gap:0;align-items:flex-start;padding:24px 20px;background:#fff;border-radius:16px;border:1px solid var(--l1)}
+.fmrow{display:flex;align-items:center;gap:16px;padding:12px 0}
+.fmrow:not(:first-child){border-top:1px solid var(--l2)}
+.fm-icon{width:48px;height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.fm-icon svg{width:22px;height:22px}
+.fm-icon.blue{background:var(--blue);box-shadow:0 4px 12px rgba(66,120,223,.25)}
+.fm-icon.teal{background:var(--green);box-shadow:0 4px 12px rgba(30,193,195,.2)}
+.fm-icon.white{background:#fff;border:1.5px solid var(--l1)}
+.fm-icon.blue-lt{background:var(--blue-lt);border:1.5px solid var(--blue-mid)}
+.fm-info{}
+.fm-num{font-size:10px;font-weight:700;color:var(--gray);margin-bottom:2px}
+.fm-title{font-size:13.5px;font-weight:700;color:var(--black)}
+.fm-sub{font-size:11.5px;color:var(--gray-dk);margin-top:1px}
+.fm-arrow{width:2px;height:20px;background:var(--l1);margin-inline-start:23px}
+
+/* ── ALERT ── */
+.alert{border-radius:10px;padding:13px 16px;margin:14px 0;display:flex;gap:11px;align-items:flex-start}
+.alert.info{background:var(--blue-lt);border-inline-start:4px solid var(--blue)}
+.alert.warn{background:var(--yellow-lt);border-inline-start:4px solid var(--yellow)}
+.alert.success{background:var(--green-lt);border-inline-start:4px solid var(--green)}
+.alert-icon{flex-shrink:0;margin-top:1px;color:var(--blue)}
+.alert.warn .alert-icon{color:var(--yellow)}
+.alert.success .alert-icon{color:var(--green-dk)}
+.alert svg{width:18px;height:18px}
+.alert p{font-size:13.5px;color:var(--black);line-height:1.6}
+
+/* ── FAILOVER ── */
+.failover{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+.gw-card{background:#fff;border-radius:12px;border:1.5px solid var(--l1);padding:18px}
+.gw-card.primary{border-color:var(--blue)}
+.gw-card.warn{border-color:var(--yellow);background:var(--yellow-lt)}
+.gw-name{font-size:15px;font-weight:700;color:var(--black);margin-bottom:4px}
+.gw-chain{font-size:12.5px;color:var(--gray-dk);font-family:'JetBrains Mono',monospace}
+.gw-chain .ca{color:var(--blue);font-weight:700}
+.gw-note{font-size:11.5px;color:var(--gray-dk);margin-top:7px}
+
+/* ── WH GRID ── */
+.wh-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* ── LANGUAGE ── */
+[data-lang="fa"] .en-only{display:none!important}
+[data-lang="en"] .fa-only{display:none!important}
+
+/* ── MOBILE HAMBURGER BUTTON ── */
+@keyframes sidebarSlideRtl{from{transform:translateX(100%)}to{transform:translateX(0)}}
+@keyframes sidebarSlideLtr{from{transform:translateX(-100%)}to{transform:translateX(0)}}
+@media screen and (max-width:900px){
+  .menu-btn{display:flex}
+  /* hide sidebar completely — direction-agnostic */
+  .sidebar{display:none!important;width:260px}
+  .sidebar.open{display:block!important;animation:sidebarSlideRtl .25s ease forwards}
+  [data-lang="en"] .sidebar.open{animation:sidebarSlideLtr .25s ease forwards}
+  body.menu-open{overflow:hidden}
+  .main{margin-right:0!important;margin-left:0!important;padding:24px 18px}
+  .hero{padding:28px 20px;border-radius:14px;margin-bottom:36px}
+  .hero-inner{flex-direction:column;gap:16px}
+  .hero-logo{width:52px;height:52px}
+  .hero-text h1{font-size:22px}
+  .hero-text p{font-size:13.5px}
+  .section-title{font-size:18px}
+  .section{margin-bottom:44px}
+  .main{padding:24px 16px}
+  .flow-diagram{display:none}
+  .flow-mobile{display:flex}
+  .flow-nums{display:none}
+  .wh-grid{grid-template-columns:1fr}
+  .failover{grid-template-columns:1fr}
+  .env-table{font-size:12px}
+  .env-key{white-space:normal;word-break:break-all}
+  .badge-os{display:none}
+  pre{font-size:11.5px;padding:14px}
+  .endpoint-path{font-size:12px}
+  .param-table{font-size:12px}
+  .cards{grid-template-columns:1fr 1fr}
+}
+@media(max-width:480px){
+  .cards{grid-template-columns:1fr}
+  .tab-btn{padding:6px 10px;font-size:11.5px}
+  .hero-text h1{font-size:20px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ TOPBAR ══ -->
+<header class="topbar">
+  <button class="menu-btn" onclick="toggleMenu()" aria-label="منو">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <a class="topbar-logo" href="#">
+    <img src="logo.png" alt="Logo">
+    <code>ir-payment-gateway</code>
+  </a>
+  <div class="topbar-right">
+    <span class="badge-os fa-only">اوپن‌سورس</span>
+    <span class="badge-os en-only">Open Source</span>
+    <div class="lang-toggle">
+      <button class="lang-btn active" onclick="setLang('fa')">فارسی</button>
+      <button class="lang-btn" onclick="setLang('en')">EN</button>
+    </div>
+  </div>
+</header>
+<div class="sidebar-overlay" id="overlay" onclick="toggleMenu()"></div>
+
+<!-- ══ SIDEBAR ══ -->
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-section">
+    <div class="sidebar-title fa-only">شروع سریع</div>
+    <div class="sidebar-title en-only">Getting Started</div>
+    <a href="#intro" class="sidebar-link active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+      <span class="fa-only">معرفی</span><span class="en-only">Introduction</span>
+    </a>
+    <a href="#how-it-works" class="sidebar-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span class="fa-only">نحوه کار</span><span class="en-only">How It Works</span>
+    </a>
+    <a href="#quickstart" class="sidebar-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+      <span class="fa-only">راه‌اندازی</span><span class="en-only">Quick Start</span>
+    </a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-title fa-only">پیکربندی</div>
+    <div class="sidebar-title en-only">Configuration</div>
+    <a href="#config-required" class="sidebar-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+      <span class="fa-only">متغیرهای اجباری</span><span class="en-only">Required Vars</span>
+    </a>
+    <a href="#config-gateway" class="sidebar-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span class="fa-only">درگاه‌ها</span><span class="en-only">Gateways</span>
+    </a>
+    <a href="#config-optional" class="sidebar-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      <span class="fa-only">اختیاری</span><span class="en-only">Optional</span>
+    </a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-title fa-only">مستندات API</div>
+    <div class="sidebar-title en-only">API Reference</div>
+    <a href="#api-init" class="sidebar-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+      <span class="fa-only">شروع پرداخت</span><span class="en-only">Initiate Payment</span>
+    </a>
+    <a href="#api-webhook" class="sidebar-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      <span class="fa-only">وب‌هوک</span><span class="en-only">Webhook</span>
+    </a>
+    <a href="#api-admin" class="sidebar-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      <span class="fa-only">ادمین</span><span class="en-only">Admin</span>
+    </a>
+    <a href="#api-refund" class="sidebar-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+      <span class="fa-only">استرداد SEP</span><span class="en-only">SEP Refund</span>
+    </a>
+  </div>
+  <div class="sidebar-section">
+    <div class="sidebar-title fa-only">پیشرفته</div>
+    <div class="sidebar-title en-only">Advanced</div>
+    <a href="#failover" class="sidebar-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      <span class="fa-only">Fail-over</span><span class="en-only">Fail-over</span>
+    </a>
+    <a href="#retry-queue" class="sidebar-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.91"/></svg>
+      <span class="fa-only">صف تلاش مجدد</span><span class="en-only">Retry Queue</span>
+    </a>
+    <a href="#docker" class="sidebar-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      <span class="fa-only">Docker</span><span class="en-only">Docker</span>
+    </a>
+  </div>
+</nav>
+
+<!-- ══ MAIN ══ -->
+<main class="layout">
+<div class="main">
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-logo"><img src="logo.png" alt="Logo"></div>
+    <div class="hero-text">
+      <h1 class="fa-only">درگاه پرداخت ایرانی<br>بدون نیاز به پایگاه‌داده</h1>
+      <h1 class="en-only">Iranian Payment Gateway<br>Without a Database</h1>
+      <p class="fa-only">سرویس مستقل پرداخت با پشتیبانی از زیبال، زرین‌پال و سپ — نتایج از طریق وب‌هوک به اپلیکیشن شما ارسال می‌شود.</p>
+      <p class="en-only">Standalone payment service supporting Zibal, Zarinpal, and SEP — results delivered to your app via webhooks.</p>
+      <div class="hero-badges">
+        <span class="hero-badge">Zibal</span>
+        <span class="hero-badge">Zarinpal</span>
+        <span class="hero-badge">SEP / Shaparak</span>
+        <span class="hero-badge fa-only">بدون دیتابیس</span>
+        <span class="hero-badge en-only">No Database</span>
+        <span class="hero-badge fa-only">Fail-over خودکار</span>
+        <span class="hero-badge en-only">Auto Fail-over</span>
+        <span class="hero-badge">MIT</span>
+        <span class="hero-badge">Node.js 18+</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── INTRO ── -->
+<section class="section" id="intro">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">این سرویس چیست؟</span><span class="en-only">What Is This?</span></h2>
+  <p class="section-sub fa-only">ir-payment-gateway یک میکروسرویس مستقل است که بین اپلیکیشن شما و درگاه‌های بانکی ایران قرار می‌گیرد.</p>
+  <p class="section-sub en-only">ir-payment-gateway is a standalone microservice sitting between your application and Iranian payment gateways.</p>
+  <div class="cards">
+    <div class="card">
+      <div class="ci blue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      </div>
+      <h3 class="fa-only">۳ درگاه پشتیبانی شده</h3><h3 class="en-only">3 Gateways</h3>
+      <p class="fa-only">زیبال، زرین‌پال و سپ — با یک API یکسان</p><p class="en-only">Zibal, Zarinpal, and SEP via one unified API</p>
+    </div>
+    <div class="card">
+      <div class="ci green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      </div>
+      <h3 class="fa-only">وب‌هوک به جای دیتابیس</h3><h3 class="en-only">Webhooks, not DB</h3>
+      <p class="fa-only">پس از تأیید پرداخت، POST به اپلیکیشن شما می‌زند</p><p class="en-only">POSTs to your app after verification — you own the data</p>
+    </div>
+    <div class="card">
+      <div class="ci yellow">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.91"/></svg>
+      </div>
+      <h3 class="fa-only">صف تلاش مجدد</h3><h3 class="en-only">Retry Queue</h3>
+      <p class="fa-only">وب‌هوک‌های ناموفق با backoff نمایی مجدداً ارسال می‌شوند</p><p class="en-only">Failed webhooks retried with exponential back-off</p>
+    </div>
+    <div class="card">
+      <div class="ci blue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
+      </div>
+      <h3 class="fa-only">Fail-over خودکار</h3><h3 class="en-only">Auto Fail-over</h3>
+      <p class="fa-only">اگر SEP timeout بخورد، به زرین‌پال سوئیچ می‌کند</p><p class="en-only">SEP timeout? Automatically switches to Zarinpal</p>
+    </div>
+    <div class="card">
+      <div class="ci red">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+      </div>
+      <h3 class="fa-only">استرداد SEP</h3><h3 class="en-only">SEP Refund API</h3>
+      <p class="fa-only">Refund_Reg، Refund_Exec و لیست روزانه</p><p class="en-only">Refund_Reg, Refund_Exec, daily refund list</p>
+    </div>
+    <div class="card">
+      <div class="ci green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>
+      </div>
+      <h3 class="fa-only">Docker آماده</h3><h3 class="en-only">Docker Ready</h3>
+      <p class="fa-only">یک Dockerfile آماده، بدون تنظیم اضافه</p><p class="en-only">One Dockerfile, zero extra config needed</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── HOW IT WORKS ── -->
+<section class="section" id="how-it-works">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">نحوه کار</span><span class="en-only">How It Works</span></h2>
+  <p class="section-sub fa-only">جریان یک تراکنش موفق از ابتدا تا دریافت نتیجه در اپلیکیشن شما:</p>
+  <p class="section-sub en-only">Flow of a successful transaction from start to result delivery:</p>
+
+  <!-- Desktop flow -->
+  <div class="flow-diagram">
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="fi blue"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+        <div class="flow-label"><div class="ft fa-only">اپ شما</div><div class="ft en-only">Your App</div><div class="fs"><code style="font-size:10px;background:var(--l2);padding:1px 5px;border-radius:4px;direction:ltr;">POST /api/payments</code></div></div>
+      </div>
+      <div class="flow-conn">
+        <svg width="44" height="20" viewBox="0 0 44 20" fill="none" class="farrow">
+          <line x1="4" y1="10" x2="36" y2="10" stroke="#4278DF" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <polyline points="12,5 4,10 12,15" stroke="#4278DF" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="flow-step">
+        <div class="fi blue-lt"><svg viewBox="0 0 24 24" fill="none" stroke="#4278DF" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+        <div class="flow-label"><div class="ft" style="font-size:11.5px;">ir-payment-gateway</div><div class="fs fa-only">انتخاب درگاه</div><div class="fs en-only">Route & request</div></div>
+      </div>
+      <div class="flow-conn">
+        <svg width="44" height="20" viewBox="0 0 44 20" fill="none" class="farrow">
+          <line x1="4" y1="10" x2="36" y2="10" stroke="#4278DF" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <polyline points="12,5 4,10 12,15" stroke="#4278DF" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="flow-step">
+        <div class="fi white"><svg viewBox="0 0 24 24" fill="none" stroke="#667A99" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+        <div class="flow-label"><div class="ft fa-only">کاربر</div><div class="ft en-only">User</div><div class="fs fa-only">پرداخت در درگاه</div><div class="fs en-only">Pays at bank</div></div>
+      </div>
+      <div class="flow-conn">
+        <svg width="44" height="20" viewBox="0 0 44 20" fill="none" class="farrow">
+          <line x1="4" y1="10" x2="36" y2="10" stroke="#1EC1C3" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <polyline points="12,5 4,10 12,15" stroke="#1EC1C3" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="flow-step">
+        <div class="fi teal"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="flow-label"><div class="ft fa-only">تأیید + وب‌هوک</div><div class="ft en-only">Verify + Webhook</div><div class="fs fa-only">نتیجه به اپ شما</div><div class="fs en-only">Result → your app</div></div>
+      </div>
+    </div>
+    <div class="flow-nums">
+      <div class="fn-label blue fa-only">① شروع</div><div class="fn-label blue en-only">① Start</div>
+      <div></div>
+      <div class="fn-label gray fa-only">② مسیریابی</div><div class="fn-label gray en-only">② Route</div>
+      <div></div>
+      <div class="fn-label gray fa-only">③ پرداخت</div><div class="fn-label gray en-only">③ Payment</div>
+      <div></div>
+      <div class="fn-label green fa-only">④ تکمیل</div><div class="fn-label green en-only">④ Complete</div>
+    </div>
+  </div>
+
+  <!-- Mobile flow -->
+  <div class="flow-mobile">
+    <div class="fmrow">
+      <div class="fm-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div>
+      <div class="fm-info"><div class="fm-num fa-only">① شروع</div><div class="fm-num en-only">① Start</div><div class="fm-title fa-only">اپ شما</div><div class="fm-title en-only">Your App</div><div class="fm-sub">POST /api/payments</div></div>
+    </div>
+    <div class="fm-arrow"></div>
+    <div class="fmrow">
+      <div class="fm-icon blue-lt"><svg viewBox="0 0 24 24" fill="none" stroke="#4278DF" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg></div>
+      <div class="fm-info"><div class="fm-num fa-only">② مسیریابی</div><div class="fm-num en-only">② Route</div><div class="fm-title">ir-payment-gateway</div><div class="fm-sub fa-only">انتخاب و ارسال به درگاه</div><div class="fm-sub en-only">Route & request gateway</div></div>
+    </div>
+    <div class="fm-arrow"></div>
+    <div class="fmrow">
+      <div class="fm-icon white"><svg viewBox="0 0 24 24" fill="none" stroke="#667A99" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+      <div class="fm-info"><div class="fm-num fa-only">③ پرداخت</div><div class="fm-num en-only">③ Payment</div><div class="fm-title fa-only">کاربر</div><div class="fm-title en-only">User</div><div class="fm-sub fa-only">پرداخت در درگاه بانکی</div><div class="fm-sub en-only">Pays at bank gateway</div></div>
+    </div>
+    <div class="fm-arrow"></div>
+    <div class="fmrow">
+      <div class="fm-icon teal"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div>
+      <div class="fm-info"><div class="fm-num" style="color:var(--green-dk);">④ تکمیل</div><div class="fm-title fa-only">تأیید + وب‌هوک</div><div class="fm-title en-only">Verify + Webhook</div><div class="fm-sub fa-only">نتیجه به اپ شما ارسال می‌شود</div><div class="fm-sub en-only">Result POSTed to your app</div></div>
+    </div>
+  </div>
+
+  <div class="alert info">
+    <span class="alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></span>
+    <p class="fa-only"><strong>نکته کلیدی:</strong> این سرویس هیچ‌گاه مستقیم به دیتابیس شما وصل نمی‌شود. تمام اطلاعات از طریق وب‌هوک POST به URL که شما تعریف می‌کنید ارسال می‌شود.</p>
+    <p class="en-only"><strong>Key point:</strong> This service never connects to your database. All information is POSTed as a webhook to the URL you configure.</p>
+  </div>
+</section>
+
+<!-- ── QUICKSTART ── -->
+<section class="section" id="quickstart">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">راه‌اندازی سریع</span><span class="en-only">Quick Start</span></h2>
+  <div class="steps">
+    <div class="step">
+      <div class="step-left"><div class="step-num">۱</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <h4 class="fa-only">کلون و نصب</h4><h4 class="en-only">Clone & Install</h4>
+        <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div>
+<pre><span class="var">git</span> clone https://github.com/azno-space/ir-payment-gateway.git
+<span class="kw">cd</span> ir-payment-gateway
+<span class="var">npm</span> install</pre></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-left"><div class="step-num">۲</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <h4 class="fa-only">تنظیم فایل .env</h4><h4 class="en-only">Set up .env</h4>
+        <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div><pre>cp .env.example .env</pre></div>
+        <div class="code-block"><div class="code-header"><span class="code-lang">.env</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div>
+<pre><span class="cmt"># ─── اجباری ────────────────────────────────────</span>
+<span class="key">CALLBACK_BASE_URL</span>=<span class="str">https://pay.yourdomain.com</span>
+<span class="key">PAYMENT_SUCCESS_WEBHOOK_URL</span>=<span class="str">https://api.yourdomain.com/payments/success</span>
+<span class="key">PAYMENT_FAILURE_WEBHOOK_URL</span>=<span class="str">https://api.yourdomain.com/payments/failure</span>
+
+<span class="cmt"># ─── درگاه‌ها ──────────────────────────────────</span>
+<span class="key">SEP_TERMINAL_ID</span>=<span class="str">your_terminal_id</span>
+<span class="key">ZARINPAL_MERCHANT</span>=<span class="str">xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx</span>
+<span class="key">ZIBAL_MERCHANT</span>=<span class="str">zibal_merchant_id</span>
+
+<span class="cmt"># ─── امنیت ─────────────────────────────────────</span>
+<span class="key">WEBHOOK_SECRET</span>=<span class="str">a-long-random-secret-key</span>
+<span class="key">ADMIN_KEY</span>=<span class="str">your-admin-bearer-token</span>
+
+<span class="cmt"># ─── فرانت‌اند ─────────────────────────────────</span>
+<span class="key">FRONT_BASE_URL</span>=<span class="str">https://yourdomain.com</span>
+<span class="key">FRONT_SUCCESS_URL</span>=<span class="str">https://yourdomain.com/payment/success</span></pre></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-left"><div class="step-num">۳</div><div class="step-line"></div></div>
+      <div class="step-content">
+        <h4 class="fa-only">اجرا</h4><h4 class="en-only">Run</h4>
+        <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div>
+<pre>npm run dev   <span class="cmt"># development</span>
+npm start     <span class="cmt"># production</span></pre></div>
+        <div class="alert success">
+          <span class="alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></span>
+          <p class="fa-only">سرویس روی پورت <strong>3000</strong> اجرا می‌شود. تست: <code>GET http://localhost:3000/api/test/health</code></p>
+          <p class="en-only">Runs on port <strong>3000</strong>. Test: <code>GET http://localhost:3000/api/test/health</code></p>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-left"><div class="step-num">۴</div></div>
+      <div class="step-content">
+        <h4 class="fa-only">اولین پرداخت</h4><h4 class="en-only">First Payment</h4>
+        <div class="tabs">
+          <div class="tab-nav">
+            <button class="tab-btn active" onclick="switchTab(this,'t-fetch')">fetch</button>
+            <button class="tab-btn" onclick="switchTab(this,'t-axios')">axios</button>
+            <button class="tab-btn" onclick="switchTab(this,'t-curl')">curl</button>
+            <button class="tab-btn" onclick="switchTab(this,'t-php')">PHP</button>
+          </div>
+          <div id="t-fetch" class="tab-content active"><div class="code-block"><div class="code-header"><span class="code-lang">javascript</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div>
+<pre><span class="kw">const</span> <span class="var">res</span> = <span class="kw">await</span> fetch(<span class="str">'https://pay.yourdomain.com/api/payments'</span>, {
+  <span class="key">method</span>: <span class="str">'POST'</span>,
+  <span class="key">headers</span>: { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  <span class="key">body</span>: JSON.stringify({
+    <span class="key">orderId</span>: <span class="str">'order-2024-001'</span>,
+    <span class="key">amount</span>:  <span class="num">1500000</span>,
+    <span class="key">mobile</span>:  <span class="str">'09123456789'</span>,
+    <span class="key">gateway</span>: <span class="str">'sep'</span>
+  })
+});
+<span class="kw">const</span> { <span class="var">targetUrl</span> } = <span class="kw">await</span> res.json();
+window.location.href = targetUrl;</pre></div></div>
+          <div id="t-axios" class="tab-content"><div class="code-block"><div class="code-header"><span class="code-lang">javascript</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div>
+<pre><span class="kw">const</span> { <span class="var">data</span> } = <span class="kw">await</span> axios.post(
+  <span class="str">'https://pay.yourdomain.com/api/payments'</span>,
+  { <span class="key">orderId</span>:<span class="str">'order-2024-001'</span>, <span class="key">amount</span>:<span class="num">1500000</span>,
+    <span class="key">mobile</span>:<span class="str">'09123456789'</span>, <span class="key">gateway</span>:<span class="str">'sep'</span> }
+);
+window.location.href = data.targetUrl;</pre></div></div>
+          <div id="t-curl" class="tab-content"><div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div>
+<pre>curl -X POST https://pay.yourdomain.com/api/payments \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"orderId":"order-2024-001","amount":1500000,
+      "mobile":"09123456789","gateway":"sep"}'</span></pre></div></div>
+          <div id="t-php" class="tab-content"><div class="code-block"><div class="code-header"><span class="code-lang">php</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div>
+<pre><span class="kw">$ch</span> = curl_init(<span class="str">'https://pay.yourdomain.com/api/payments'</span>);
+curl_setopt_array(<span class="kw">$ch</span>, [
+  CURLOPT_POST => <span class="kw">true</span>, CURLOPT_RETURNTRANSFER => <span class="kw">true</span>,
+  CURLOPT_HTTPHEADER => [<span class="str">'Content-Type: application/json'</span>],
+  CURLOPT_POSTFIELDS => json_encode([
+    <span class="str">'orderId'</span>=><span class="str">'order-2024-001'</span>, <span class="str">'amount'</span>=><span class="num">1500000</span>,
+    <span class="str">'mobile'</span>=><span class="str">'09123456789'</span>, <span class="str">'gateway'</span>=><span class="str">'sep'</span>
+  ]),
+]);
+<span class="kw">$r</span> = json_decode(curl_exec(<span class="kw">$ch</span>));
+header(<span class="str">'Location: '</span>.<span class="kw">$r</span>->targetUrl);</pre></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CONFIG REQUIRED ── -->
+<section class="section" id="config-required">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">متغیرهای محیطی اجباری</span><span class="en-only">Required Environment Variables</span></h2>
+  <table class="env-table">
+    <thead><tr><th>Variable</th><th class="fa-only">توضیح</th><th class="en-only">Description</th><th></th></tr></thead>
+    <tbody>
+      <tr><td><code class="env-key">CALLBACK_BASE_URL</code></td><td class="env-desc fa-only">آدرس عمومی این سرویس — درگاه‌ها پس از پرداخت به اینجا redirect می‌کنند</td><td class="env-desc en-only">Public URL of this service — gateways redirect here after payment</td><td><span class="req fa-only">اجباری</span><span class="req en-only">Required</span></td></tr>
+      <tr><td><code class="env-key">PAYMENT_SUCCESS_WEBHOOK_URL</code></td><td class="env-desc fa-only">URL اپلیکیشن شما — پس از تأیید پرداخت POST می‌شود</td><td class="env-desc en-only">Your app's URL — receives a POST after successful verification</td><td><span class="req fa-only">اجباری</span><span class="req en-only">Required</span></td></tr>
+      <tr><td><code class="env-key">PAYMENT_FAILURE_WEBHOOK_URL</code></td><td class="env-desc fa-only">URL اپلیکیشن شما — در صورت لغو یا خطا POST می‌شود</td><td class="env-desc en-only">Your app's URL — notified on payment failure or cancellation</td><td><span class="req fa-only">اجباری</span><span class="req en-only">Required</span></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── CONFIG GATEWAY ── -->
+<section class="section" id="config-gateway">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">تنظیمات درگاه‌ها</span><span class="en-only">Gateway Configuration</span></h2>
+  <p class="section-sub fa-only">حداقل یک درگاه را فعال کنید. برای fail-over خودکار هم SEP و هم زرین‌پال را فعال کنید.</p>
+  <p class="section-sub en-only">Enable at least one gateway. For auto fail-over, activate both SEP and Zarinpal.</p>
+  <table class="env-table">
+    <thead><tr><th>Variable</th><th>Gateway</th><th class="fa-only">توضیح</th><th class="en-only">Description</th></tr></thead>
+    <tbody>
+      <tr><td><code class="env-key">SEP_TERMINAL_ID</code></td><td>SEP</td><td class="fa-only">شناسه ترمینال</td><td class="en-only">Terminal ID</td></tr>
+      <tr><td><code class="env-key">SEP_USERNAME</code></td><td>SEP</td><td class="fa-only">نام کاربری API استرداد</td><td class="en-only">Refund API username</td></tr>
+      <tr><td><code class="env-key">SEP_PASSWORD</code></td><td>SEP</td><td class="fa-only">رمز عبور API استرداد</td><td class="en-only">Refund API password</td></tr>
+      <tr><td><code class="env-key">ZARINPAL_MERCHANT</code></td><td>Zarinpal</td><td class="fa-only">کد ۳۶ کاراکتری مرچنت</td><td class="en-only">36-char merchant ID</td></tr>
+      <tr><td><code class="env-key">ZIBAL_MERCHANT</code></td><td>Zibal</td><td class="fa-only">شناسه مرچنت زیبال</td><td class="en-only">Zibal merchant identifier</td></tr>
+      <tr><td><code class="env-key">FORCED_PAYMENT_GATEWAY</code></td><td>—</td><td class="fa-only">اجبار همه پرداخت‌ها از یک درگاه خاص</td><td class="en-only">Force all payments through one gateway</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── CONFIG OPTIONAL ── -->
+<section class="section" id="config-optional">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">تنظیمات اختیاری</span><span class="en-only">Optional Configuration</span></h2>
+  <table class="env-table">
+    <thead><tr><th>Variable</th><th class="fa-only">پیش‌فرض</th><th class="en-only">Default</th><th class="fa-only">توضیح</th><th class="en-only">Description</th></tr></thead>
+    <tbody>
+      <tr><td><code class="env-key">WEBHOOK_SECRET</code></td><td class="env-default">—</td><td class="fa-only env-desc">هدر <code>X-Webhook-Secret</code> به هر وب‌هوک اضافه می‌شود</td><td class="en-only env-desc">Adds <code>X-Webhook-Secret</code> header to every webhook</td></tr>
+      <tr><td><code class="env-key">ADMIN_KEY</code></td><td class="env-default">—</td><td class="fa-only env-desc">Bearer token برای endpoint‌های مدیریتی</td><td class="en-only env-desc">Bearer token for admin endpoints</td></tr>
+      <tr><td><code class="env-key">FRONT_SUCCESS_URL</code></td><td class="env-default">—</td><td class="fa-only env-desc">URL redirect پس از پرداخت موفق</td><td class="en-only env-desc">Redirect URL after successful payment</td></tr>
+      <tr><td><code class="env-key">SUPPORT_PHONE</code></td><td class="env-default">—</td><td class="fa-only env-desc">شماره پشتیبانی نمایش داده شده در صفحات خطا</td><td class="en-only env-desc">Support phone shown on error pages</td></tr>
+      <tr><td><code class="env-key">PAYMENT_FAILOVER_ENABLED</code></td><td class="env-default">true</td><td class="fa-only env-desc">فعال/غیرفعال کردن fail-over خودکار</td><td class="en-only env-desc">Enable/disable automatic fail-over</td></tr>
+      <tr><td><code class="env-key">GATEWAY_REQUEST_TIMEOUT_MS</code></td><td class="env-default">8000</td><td class="fa-only env-desc">Timeout درگاه در مرحله شروع پرداخت (ms)</td><td class="en-only env-desc">Gateway timeout for payment request phase (ms)</td></tr>
+      <tr><td><code class="env-key">BALE_BOT_TOKEN</code></td><td class="env-default">—</td><td class="fa-only env-desc">ربات Bale برای اعلان‌های پرداخت</td><td class="en-only env-desc">Bale bot token for payment notifications</td></tr>
+      <tr><td><code class="env-key">TELEGRAM_BOT_TOKEN</code></td><td class="env-default">—</td><td class="fa-only env-desc">ربات تلگرام</td><td class="en-only env-desc">Telegram bot token</td></tr>
+      <tr><td><code class="env-key">TELEGRAM_BASE_URL</code></td><td class="env-default">api.telegram.org</td><td class="fa-only env-desc">آدرس پایه API تلگرام — برای پروکسی تغییر دهید</td><td class="en-only env-desc">Telegram API base URL — change for proxy</td></tr>
+      <tr><td><code class="env-key">EVENT_WEBHOOK_URL</code></td><td class="env-default">—</td><td class="fa-only env-desc">URL برای ارسال رویدادهای پرداخت (آنالیتیکس)</td><td class="en-only env-desc">Webhook URL for payment event analytics</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── API INIT ── -->
+<section class="section" id="api-init">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">API — شروع پرداخت</span><span class="en-only">API — Initiate Payment</span></h2>
+  <div class="endpoint">
+    <div class="endpoint-header">
+      <span class="method POST">POST</span>
+      <code class="endpoint-path">/api/payments</code>
+    </div>
+    <div class="endpoint-body">
+      <table class="param-table">
+        <thead><tr><th class="fa-only">فیلد</th><th class="en-only">Field</th><th class="fa-only">نوع</th><th class="en-only">Type</th><th class="fa-only">توضیح</th><th class="en-only">Description</th></tr></thead>
+        <tbody>
+          <tr><td><code class="pname">orderId</code></td><td><code class="ptype">string</code></td><td class="pdesc fa-only">شناسه سفارش <span class="req">اجباری</span></td><td class="pdesc en-only">Your unique order ID <span class="req">Required</span></td></tr>
+          <tr><td><code class="pname">amount</code></td><td><code class="ptype">number</code></td><td class="pdesc fa-only">مبلغ به ریال <span class="req">اجباری</span></td><td class="pdesc en-only">Amount in Rials <span class="req">Required</span></td></tr>
+          <tr><td><code class="pname">mobile</code></td><td><code class="ptype">string</code></td><td class="pdesc fa-only">موبایل کاربر <span class="opt">اختیاری</span></td><td class="pdesc en-only">Customer mobile <span class="opt">Optional</span></td></tr>
+          <tr><td><code class="pname">gateway</code></td><td><code class="ptype">string</code></td><td class="pdesc fa-only"><code>sep</code>، <code>zarinpal</code>، <code>zibal</code> <span class="opt">اختیاری</span></td><td class="pdesc en-only"><code>sep</code>, <code>zarinpal</code>, <code>zibal</code> <span class="opt">Optional</span></td></tr>
+        </tbody>
+      </table>
+      <p style="font-size:12.5px;color:var(--gray-dk);margin:14px 0 6px;" class="fa-only">پاسخ موفق (200):</p>
+      <p style="font-size:12.5px;color:var(--gray-dk);margin:14px 0 6px;" class="en-only">Success response (200):</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">json</span></div>
+<pre>{ <span class="key">"targetUrl"</span>: <span class="str">"https://sep.shaparak.ir/OnlinePG/SendToken?token=..."</span>,
+  <span class="key">"gateway"</span>:   <span class="str">"sep"</span>,
+  <span class="key">"orderId"</span>:   <span class="str">"order-2024-001"</span> }</pre></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── WEBHOOK ── -->
+<section class="section" id="api-webhook">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">دریافت نتیجه (وب‌هوک)</span><span class="en-only">Receiving Result (Webhook)</span></h2>
+  <p class="section-sub fa-only">پس از تأیید یا رد، سرویس یک POST به URL‌های تعریف شده ارسال می‌کند:</p>
+  <p class="section-sub en-only">After verification or failure, the service POSTs to your configured URLs:</p>
+  <div class="wh-grid">
+    <div>
+      <p style="font-size:12.5px;font-weight:700;color:var(--green-dk);margin-bottom:7px;">✓ <code>PAYMENT_SUCCESS_WEBHOOK_URL</code></p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">json</span></div>
+<pre>{ <span class="key">"orderId"</span>:  <span class="str">"order-2024-001"</span>,
+  <span class="key">"gateway"</span>:  <span class="str">"sep"</span>,
+  <span class="key">"code"</span>:     <span class="str">"REF123456"</span>,
+  <span class="key">"status"</span>:   <span class="str">"success"</span>,
+  <span class="key">"verifyDetails"</span>: { ... },
+  <span class="key">"timestamp"</span>: <span class="str">"2024-01-01T12:00:00Z"</span> }</pre></div>
+    </div>
+    <div>
+      <p style="font-size:12.5px;font-weight:700;color:var(--red-dk);margin-bottom:7px;">✗ <code>PAYMENT_FAILURE_WEBHOOK_URL</code></p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">json</span></div>
+<pre>{ <span class="key">"orderId"</span>: <span class="str">"order-2024-001"</span>,
+  <span class="key">"gateway"</span>: <span class="str">"sep"</span>,
+  <span class="key">"code"</span>:    <span class="str">""</span>,
+  <span class="key">"status"</span>:  <span class="str">"failed"</span>,
+  <span class="key">"reason"</span>:  <span class="str">"توسط کاربر انصراف داده شد"</span>,
+  <span class="key">"timestamp"</span>: <span class="str">"2024-01-01T12:00:00Z"</span> }</pre></div>
+    </div>
+  </div>
+  <p style="font-size:13.5px;font-weight:700;color:var(--black);margin:20px 0 10px;" class="fa-only">Handler نمونه در Express.js:</p>
+  <p style="font-size:13.5px;font-weight:700;color:var(--black);margin:20px 0 10px;" class="en-only">Example Express.js handler:</p>
+  <div class="code-block"><div class="code-header"><span class="code-lang">javascript</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div>
+<pre>app.post(<span class="str">'/payments/success'</span>, <span class="kw">async</span> (req, res) => {
+  <span class="kw">const</span> <span class="var">secret</span> = req.headers[<span class="str">'x-webhook-secret'</span>];
+  <span class="kw">if</span> (<span class="var">secret</span> !== process.env.WEBHOOK_SECRET)
+    <span class="kw">return</span> res.status(<span class="num">401</span>).json({ <span class="key">error</span>: <span class="str">'Unauthorized'</span> });
+
+  <span class="kw">const</span> { <span class="var">orderId</span>, <span class="var">code</span>, <span class="var">status</span> } = req.body;
+  <span class="kw">if</span> (<span class="var">status</span> === <span class="str">'success'</span>) {
+    <span class="kw">await</span> db.orders.update({ <span class="key">id</span>: <span class="var">orderId</span> },
+      { <span class="key">status</span>: <span class="str">'paid'</span>, <span class="key">refCode</span>: <span class="var">code</span> });
+  }
+  res.json({ <span class="key">ok</span>: <span class="kw">true</span> }); <span class="cmt">// always respond with 200</span>
+});</pre></div>
+  <div class="alert warn">
+    <span class="alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+    <p class="fa-only"><strong>مهم:</strong> اگر endpoint شما کد غیر 200 برگرداند، وب‌هوک به صف retry اضافه شده و با backoff نمایی مجدداً ارسال می‌شود.</p>
+    <p class="en-only"><strong>Important:</strong> Non-200 response adds the webhook to the retry queue with exponential back-off.</p>
+  </div>
+</section>
+
+<!-- ── ADMIN ── -->
+<section class="section" id="api-admin">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">API — ادمین</span><span class="en-only">API — Admin</span></h2>
+  <p class="section-sub fa-only">همه endpoint‌های ادمین نیاز به <code>Authorization: Bearer &lt;ADMIN_KEY&gt;</code> دارند.</p>
+  <p class="section-sub en-only">All admin endpoints require <code>Authorization: Bearer &lt;ADMIN_KEY&gt;</code>.</p>
+  <div class="endpoint">
+    <div class="endpoint-header"><span class="method GET">GET</span><code class="endpoint-path">/api/payments/admin/verify-only</code></div>
+    <div class="endpoint-body">
+      <p style="font-size:13px;color:var(--gray-dk);margin-bottom:10px;" class="fa-only">تأیید تراکنش از درگاه بدون هیچ تغییری — برای بررسی دستی</p>
+      <p style="font-size:13px;color:var(--gray-dk);margin-bottom:10px;" class="en-only">Verify a transaction with the gateway, no side effects — for manual checks</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div>
+<pre>curl -H <span class="str">"Authorization: Bearer your-key"</span> \
+  <span class="str">"https://pay.yourdomain.com/api/payments/admin/verify-only?gateway=sep&amp;code=REF123"</span></pre></div>
+    </div>
+  </div>
+  <div class="endpoint">
+    <div class="endpoint-header"><span class="method POST">POST</span><code class="endpoint-path">/api/payments/admin/trigger-webhook</code></div>
+    <div class="endpoint-body">
+      <p style="font-size:13px;color:var(--gray-dk);margin-bottom:10px;" class="fa-only">ارسال دستی وب‌هوک موفقیت — برای ریکاوری</p>
+      <p style="font-size:13px;color:var(--gray-dk);margin-bottom:10px;" class="en-only">Manually trigger the success webhook — for recovery</p>
+      <div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div>
+<pre>curl -X POST https://pay.yourdomain.com/api/payments/admin/trigger-webhook \
+  -H <span class="str">"Authorization: Bearer your-key"</span> \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"orderId":"order-2024-001","gateway":"sep","code":"REF123"}'</span></pre></div>
+    </div>
+  </div>
+</section>
+
+<!-- ── SEP REFUND ── -->
+<section class="section" id="api-refund">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">API — استرداد SEP</span><span class="en-only">API — SEP Refund</span></h2>
+  <table class="env-table">
+    <thead><tr><th class="fa-only">متد / آدرس</th><th class="en-only">Method / Path</th><th class="fa-only">عملکرد</th><th class="en-only">Description</th></tr></thead>
+    <tbody>
+      <tr><td><code class="env-key">POST /admin/sep/refund/reg</code></td><td class="fa-only">ثبت درخواست استرداد</td><td class="en-only">Register refund request</td></tr>
+      <tr><td><code class="env-key">POST /admin/sep/refund/exec</code></td><td class="fa-only">اجرای استرداد</td><td class="en-only">Execute the refund</td></tr>
+      <tr><td><code class="env-key">GET /admin/sep/refund/list</code></td><td class="fa-only">لیست استردادهای روز</td><td class="en-only">Get daily refund list</td></tr>
+      <tr><td><code class="env-key">POST /admin/sep/refund/status</code></td><td class="fa-only">وضعیت استرداد</td><td class="en-only">Get refund status</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── FAILOVER ── -->
+<section class="section" id="failover">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">Fail-over خودکار</span><span class="en-only">Automatic Fail-over</span></h2>
+  <p class="section-sub fa-only">اگر درگاه اصلی timeout بخورد یا خطا بدهد، سرویس به درگاه بعدی سوئیچ می‌کند:</p>
+  <p class="section-sub en-only">If the primary gateway times out or errors, the service switches to the next in the chain:</p>
+  <div class="failover">
+    <div class="gw-card primary">
+      <div class="gw-name">SEP (Saman)</div>
+      <div class="gw-chain fa-only">زنجیره: SEP <span class="ca">→</span> Zarinpal</div>
+      <div class="gw-chain en-only">Chain: SEP <span class="ca">→</span> Zarinpal</div>
+      <div class="gw-note fa-only">اگر SEP در ۸ ثانیه پاسخ ندهد، به زرین‌پال fail-over می‌شود</div>
+      <div class="gw-note en-only">If SEP doesn't respond in 8s, fails over to Zarinpal</div>
+    </div>
+    <div class="gw-card">
+      <div class="gw-name">Zarinpal</div>
+      <div class="gw-chain fa-only">زنجیره: Zarinpal (فقط)</div>
+      <div class="gw-chain en-only">Chain: Zarinpal only</div>
+      <div class="gw-note fa-only">آخرین لینک — timeout طولانی‌تر</div>
+      <div class="gw-note en-only">Last in chain — longer timeout applies</div>
+    </div>
+    <div class="gw-card">
+      <div class="gw-name">Zibal</div>
+      <div class="gw-chain fa-only">زنجیره: Zibal (فقط)</div>
+      <div class="gw-chain en-only">Chain: Zibal only</div>
+      <div class="gw-note fa-only">بدون fail-over</div>
+      <div class="gw-note en-only">No fail-over chain</div>
+    </div>
+    <div class="gw-card warn">
+      <div class="gw-name fa-only">غیرفعال کردن</div>
+      <div class="gw-name en-only">Disable</div>
+      <div class="gw-chain" style="color:var(--yellow);">PAYMENT_FAILOVER_ENABLED=false</div>
+      <div class="gw-note fa-only">همیشه از درگاه انتخابی استفاده می‌شود</div>
+      <div class="gw-note en-only">Always uses the selected gateway</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── RETRY QUEUE ── -->
+<section class="section" id="retry-queue">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">صف تلاش مجدد</span><span class="en-only">Retry Queue</span></h2>
+  <p class="section-sub fa-only">اگر URL وب‌هوک شما در دسترس نباشد، payload در <code>data/payment-queue.json</code> ذخیره می‌شود.</p>
+  <p class="section-sub en-only">If your webhook URL is unavailable, the payload is saved to <code>data/payment-queue.json</code>.</p>
+  <div class="cards" style="grid-template-columns:repeat(3,1fr)">
+    <div class="card" style="text-align:center">
+      <div class="ci blue" style="margin:0 auto 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+      <h3 class="fa-only">تلاش اول</h3><h3 class="en-only">Retry 1</h3>
+      <p class="fa-only">۱ دقیقه بعد</p><p class="en-only">After 1 minute</p>
+    </div>
+    <div class="card" style="text-align:center">
+      <div class="ci yellow" style="margin:0 auto 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+      <h3 class="fa-only">تلاش دوم</h3><h3 class="en-only">Retry 2</h3>
+      <p class="fa-only">۵ دقیقه بعد</p><p class="en-only">After 5 minutes</p>
+    </div>
+    <div class="card" style="text-align:center">
+      <div class="ci red" style="margin:0 auto 10px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.91"/></svg></div>
+      <h3 class="fa-only">ادامه</h3><h3 class="en-only">Further</h3>
+      <p class="fa-only">Backoff نمایی</p><p class="en-only">Exponential back-off</p>
+    </div>
+  </div>
+  <div class="code-block" style="margin-top:16px"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div>
+<pre><span class="cmt"># مشاهده صف</span>
+curl http://localhost:3000/api/test/queue
+<span class="cmt"># بررسی سلامت</span>
+curl http://localhost:3000/api/test/health</pre></div>
+</section>
+
+<!-- ── DOCKER ── -->
+<section class="section" id="docker">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">استقرار Docker</span><span class="en-only">Docker Deployment</span></h2>
+  <div class="tabs">
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab(this,'td-run')">docker run</button>
+      <button class="tab-btn" onclick="switchTab(this,'td-compose')">docker compose</button>
+    </div>
+    <div id="td-run" class="tab-content active"><div class="code-block"><div class="code-header"><span class="code-lang">bash</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div>
+<pre>docker build -t ir-payment-gateway .
+docker run -d \
+  --name payment-gw -p 3000:3000 \
+  --env-file .env --restart unless-stopped \
+  -v $(pwd)/data:/app/data \
+  -v $(pwd)/logs:/app/logs \
+  ir-payment-gateway</pre></div></div>
+    <div id="td-compose" class="tab-content"><div class="code-block"><div class="code-header"><span class="code-lang">yaml</span><button class="copy-btn" onclick="copyCode(this)"><span class="fa-only">کپی</span><span class="en-only">Copy</span></button></div>
+<pre><span class="key">services</span>:
+  <span class="key">payment-gateway</span>:
+    <span class="key">build</span>: <span class="str">.</span>
+    <span class="key">ports</span>: [<span class="str">"3000:3000"</span>]
+    <span class="key">env_file</span>: <span class="str">.env</span>
+    <span class="key">volumes</span>:
+      - <span class="str">./data:/app/data</span>
+      - <span class="str">./logs:/app/logs</span>
+    <span class="key">restart</span>: <span class="str">unless-stopped</span>
+    <span class="key">healthcheck</span>:
+      <span class="key">test</span>: [<span class="str">"CMD"</span>,<span class="str">"wget"</span>,<span class="str">"-qO-"</span>,<span class="str">"http://localhost:3000/api/test/health"</span>]
+      <span class="key">interval</span>: <span class="str">30s</span></pre></div></div>
+  </div>
+  <div class="alert info" style="margin-top:14px">
+    <span class="alert-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg></span>
+    <p class="fa-only"><strong>پایداری داده:</strong> پوشه‌های <code>data/</code> و <code>logs/</code> را حتماً mount کنید تا در صورت restart داده‌ها حفظ شوند.</p>
+    <p class="en-only"><strong>Data persistence:</strong> Always mount <code>data/</code> and <code>logs/</code> so data survives container restarts.</p>
+  </div>
+</section>
+
+</div>
+</main>
+
+<script>
+function setLang(l) {
+  document.documentElement.setAttribute('data-lang', l);
+  document.documentElement.setAttribute('dir', l === 'en' ? 'ltr' : 'rtl');
+  document.querySelectorAll('.lang-btn').forEach((b,i) => b.classList.toggle('active', (i===0&&l==='fa')||(i===1&&l==='en')));
+}
+
+function toggleMenu(forceClose) {
+  const s = document.getElementById('sidebar');
+  const o = document.getElementById('overlay');
+  const isOpen = forceClose === true ? true : s.classList.contains('open');
+  s.classList.toggle('open', !isOpen);
+  o.classList.toggle('open', !isOpen);
+  document.body.classList.toggle('menu-open', !isOpen);
+}
+
+function switchTab(btn, id) {
+  const tabs = btn.closest('.tabs');
+  tabs.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  tabs.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+
+function copyCode(btn) {
+  const text = btn.closest('.code-block').querySelector('pre').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const isEn = document.documentElement.getAttribute('data-lang') === 'en';
+    btn.textContent = '✓';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.innerHTML = isEn
+        ? '<span class="en-only">Copy</span>'
+        : '<span class="fa-only">کپی</span>';
+      btn.classList.remove('copied');
+    }, 2000);
+  });
+}
+
+// Scroll spy
+const sections = document.querySelectorAll('.section');
+const links = document.querySelectorAll('.sidebar-link');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting)
+      links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+  });
+}, { rootMargin: '-15% 0px -60% 0px' });
+sections.forEach(s => obs.observe(s));
+
+// Close sidebar on link click (mobile)
+links.forEach(l => l.addEventListener('click', () => toggleMenu(true)));
+</script>
+</body>
+</html>
