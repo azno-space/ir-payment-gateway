@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="./docs/banner.svg" alt="ir-payment-gateway" width="100%"/>
+</p>
+
 # ir-payment-gateway
 
 A standalone, database-free Iranian payment gateway service supporting **Zibal**, **Zarinpal**, and **SEP (Saman/Shaparak)**. Instead of writing to a database, it calls configurable webhook URLs when a payment succeeds or fails — your application owns the data layer.
