@@ -30,7 +30,7 @@ async function callWebhook(url, payload, { retries = WEBHOOK_MAX_RETRIES } = {})
 
       lastError = new Error(`Webhook returned HTTP ${resp.status}`);
       lastError.status = resp.status;
-      console.warn(`[Webhook] Non-2xx response — url=${url}, status=${resp.status}, attempt=${attempt}/${retries}`);
+      console.warn(`[Webhook] Non-200 response — url=${url}, status=${resp.status}, attempt=${attempt}/${retries}`);
     } catch (err) {
       lastError = err;
       console.warn(`[Webhook] Request failed — url=${url}, attempt=${attempt}/${retries}: ${err.message}`);
@@ -46,4 +46,25 @@ async function callWebhook(url, payload, { retries = WEBHOOK_MAX_RETRIES } = {})
   return { ok: false, error: lastError?.message };
 }
 
-module.exports = { callWebhook };
+async function pingWebhook(url) {
+  if (!url) return { ok: true, skipped: true };
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (WEBHOOK_SECRET) headers['X-Webhook-Secret'] = WEBHOOK_SECRET;
+
+  try {
+    const resp = await axios.post(
+      url,
+      { type: 'ping', timestamp: new Date().toISOString() },
+      { timeout: 5000, headers, validateStatus: () => true },
+    );
+    const ok = resp.status >= 200 && resp.status < 300;
+    console.log(`[Webhook] Ping ${ok ? 'OK' : 'FAILED'} — url=${url}, status=${resp.status}`);
+    return { ok, status: resp.status };
+  } catch (err) {
+    console.warn(`[Webhook] Ping failed — url=${url}: ${err.message}`);
+    return { ok: false, error: err.message };
+  }
+}
+
+module.exports = { callWebhook, pingWebhook };

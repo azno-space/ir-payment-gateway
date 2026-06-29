@@ -10,7 +10,7 @@ const {
   sepGetDailyRefundList,
   sepGetRefundStatus,
 } = require('../services/payment-gateway.service');
-const { callWebhook } = require('../services/webhook.service');
+const { callWebhook, pingWebhook } = require('../services/webhook.service');
 const paymentSession = require('../services/payment-session.service');
 const paymentQueue = require('../services/payment-queue.service');
 const { renderErrorPage } = require('../views/error-page');
@@ -380,6 +380,34 @@ async function handlePaymentCallback(req, res) {
       retryCallbackUrl: null,
       showSupport: false,
     }));
+  }
+
+  // ── Webhook health check before verify ──────────────────────────────────
+  if (PAYMENT_SUCCESS_WEBHOOK_URL) {
+    const ping = await pingWebhook(PAYMENT_SUCCESS_WEBHOOK_URL);
+    if (!ping.ok) {
+      console.warn(`[Callback] Webhook health check failed — aborting verify. orderId=${orderIdFromQuery}`);
+      logPaymentEvent('payment_warning', {
+        gateway,
+        orderId: orderIdFromQuery,
+        reason: 'Webhook health check failed before verify',
+      });
+      setImmediate(() => {
+        sendErrorNotificationToBale({
+          title: 'وب‌هوک در دسترس نیست',
+          message: 'پیش از verify درگاه، health check وب‌هوک شکست خورد.',
+          gateway,
+          code,
+          orderId: orderIdFromQuery,
+        }).catch(() => {});
+      });
+      return res.status(503).send(renderErrorPage({
+        title: 'خطا در به‌روزرسانی اطلاعات',
+        message: 'پرداخت شما در سیستم ثبت نشد. لطفاً با پشتیبانی تماس بگیرید تا وضعیت سفارش شما بررسی شود.',
+        showSupport: true,
+        showRefundInfo: false,
+      }));
+    }
   }
 
   // ── Verify with gateway ──────────────────────────────────────────────────

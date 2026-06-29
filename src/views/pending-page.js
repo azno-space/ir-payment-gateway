@@ -1,7 +1,7 @@
 const FRONT_BASE_URL = process.env.FRONT_BASE_URL || '';
 const frontUrl = (p) => `${FRONT_BASE_URL}${p}`;
 
-function renderPendingPage({ code, gateway } = {}) {
+function renderPendingPage({ code, gateway, retryCallbackUrl, message } = {}) {
   const shortCode = code ? String(code).slice(0, 50) : null;
   const SUPPORT_PHONE = process.env.SUPPORT_PHONE || '';
   const SUPPORT_URL = process.env.SUPPORT_URL || '';
@@ -105,7 +105,7 @@ function renderPendingPage({ code, gateway } = {}) {
     </div>
     <h1>پرداخت در حال پردازش</h1>
     <div class="warn-box">
-      <p>پرداخت شما توسط بانک تأیید شده، اما به دلیل <strong>اختلال موقت</strong>، ثبت آن چند دقیقه‌ای به تأخیر افتاده است.</p>
+      <p>${message || 'پرداخت شما توسط بانک تأیید شده، اما به دلیل <strong>اختلال موقت</strong>، ثبت آن چند دقیقه‌ای به تأخیر افتاده است.'}</p>
     </div>
     <div class="success-box">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green-dark)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -120,9 +120,9 @@ function renderPendingPage({ code, gateway } = {}) {
           <span class="code-value">${shortCode}</span>
         </div>`
       : ''}
-    ${FRONT_BASE_URL
-      ? `<a href="${frontUrl('/')}" class="btn">بازگشت به پنل کاربری</a>`
-      : ''}
+    ${retryCallbackUrl
+      ? `<a href="${retryCallbackUrl}" class="btn">تلاش مجدد</a>`
+      : (FRONT_BASE_URL ? `<a href="${frontUrl('/')}" class="btn">بازگشت به پنل کاربری</a>` : '')}
     ${supportHtml
       ? `<div class="footer">
           <p>اگر پس از ۱۵ دقیقه وضعیت به‌روزرسانی نشد، با پشتیبانی تماس بگیرید:</p>
