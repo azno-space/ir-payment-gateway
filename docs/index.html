@@ -365,6 +365,10 @@ pre{padding:18px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-siz
   <div class="sidebar-section">
     <div class="sidebar-title fa-only">پیشرفته</div>
     <div class="sidebar-title en-only">Advanced</div>
+    <a href="#sandbox" class="sidebar-link">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      <span class="fa-only">Sandbox</span><span class="en-only">Sandbox</span>
+    </a>
     <a href="#failover" class="sidebar-link">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
       <span class="fa-only">Fail-over</span><span class="en-only">Fail-over</span>
@@ -675,9 +679,10 @@ header(<span class="str">'Location: '</span>.<span class="kw">$r</span>->targetU
       <tr><td><code class="env-key">SEP_TERMINAL_ID</code></td><td>SEP</td><td class="fa-only">شناسه ترمینال</td><td class="en-only">Terminal ID</td></tr>
       <tr><td><code class="env-key">SEP_USERNAME</code></td><td>SEP</td><td class="fa-only">نام کاربری API استرداد</td><td class="en-only">Refund API username</td></tr>
       <tr><td><code class="env-key">SEP_PASSWORD</code></td><td>SEP</td><td class="fa-only">رمز عبور API استرداد</td><td class="en-only">Refund API password</td></tr>
-      <tr><td><code class="env-key">ZARINPAL_MERCHANT</code></td><td>Zarinpal</td><td class="fa-only">کد ۳۶ کاراکتری مرچنت</td><td class="en-only">36-char merchant ID</td></tr>
+      <tr><td><code class="env-key">ZARINPAL_MERCHANT</code></td><td>Zarinpal / Sandbox</td><td class="fa-only">کد ۳۶ کاراکتری مرچنت (برای sandbox هم استفاده می‌شود)</td><td class="en-only">36-char merchant ID (also used for sandbox)</td></tr>
+      <tr><td><code class="env-key">ZARINPAL_SANDBOX</code></td><td>Zarinpal</td><td class="fa-only">مقدار <code>true</code> — همه کال‌های zarinpal به sandbox هدایت می‌شوند</td><td class="en-only">Set <code>true</code> to redirect all zarinpal calls to sandbox globally</td></tr>
       <tr><td><code class="env-key">ZIBAL_MERCHANT</code></td><td>Zibal</td><td class="fa-only">شناسه مرچنت زیبال</td><td class="en-only">Zibal merchant identifier</td></tr>
-      <tr><td><code class="env-key">FORCED_PAYMENT_GATEWAY</code></td><td>—</td><td class="fa-only">اجبار همه پرداخت‌ها از یک درگاه خاص</td><td class="en-only">Force all payments through one gateway</td></tr>
+      <tr><td><code class="env-key">FORCED_PAYMENT_GATEWAY</code></td><td>—</td><td class="fa-only">اجبار همه پرداخت‌ها از یک درگاه خاص (<code>zibal</code>، <code>zarinpal</code>، <code>zarinpal_sandbox</code>، <code>sep</code>)</td><td class="en-only">Force all payments through one gateway (<code>zibal</code>, <code>zarinpal</code>, <code>zarinpal_sandbox</code>, <code>sep</code>)</td></tr>
     </tbody>
   </table>
 </section>
@@ -717,7 +722,7 @@ header(<span class="str">'Location: '</span>.<span class="kw">$r</span>->targetU
           <tr><td><code class="pname">orderId</code></td><td><code class="ptype">string</code></td><td class="pdesc fa-only">شناسه سفارش <span class="req">اجباری</span></td><td class="pdesc en-only">Your unique order ID <span class="req">Required</span></td></tr>
           <tr><td><code class="pname">amount</code></td><td><code class="ptype">number</code></td><td class="pdesc fa-only">مبلغ به ریال <span class="req">اجباری</span></td><td class="pdesc en-only">Amount in Rials <span class="req">Required</span></td></tr>
           <tr><td><code class="pname">mobile</code></td><td><code class="ptype">string</code></td><td class="pdesc fa-only">موبایل کاربر <span class="opt">اختیاری</span></td><td class="pdesc en-only">Customer mobile <span class="opt">Optional</span></td></tr>
-          <tr><td><code class="pname">gateway</code></td><td><code class="ptype">string</code></td><td class="pdesc fa-only"><code>sep</code>، <code>zarinpal</code>، <code>zibal</code> <span class="opt">اختیاری</span></td><td class="pdesc en-only"><code>sep</code>, <code>zarinpal</code>, <code>zibal</code> <span class="opt">Optional</span></td></tr>
+          <tr><td><code class="pname">gateway</code></td><td><code class="ptype">string</code></td><td class="pdesc fa-only"><code>sep</code>، <code>zarinpal</code>، <code>zarinpal_sandbox</code>، <code>zibal</code> <span class="opt">اختیاری</span></td><td class="pdesc en-only"><code>sep</code>, <code>zarinpal</code>, <code>zarinpal_sandbox</code>, <code>zibal</code> <span class="opt">Optional</span></td></tr>
         </tbody>
       </table>
       <p style="font-size:12.5px;color:var(--gray-dk);margin:14px 0 6px;" class="fa-only">پاسخ موفق (200):</p>
@@ -818,6 +823,33 @@ header(<span class="str">'Location: '</span>.<span class="kw">$r</span>->targetU
       <tr><td><code class="env-key">POST /admin/sep/refund/exec</code></td><td class="fa-only">اجرای استرداد</td><td class="en-only">Execute the refund</td></tr>
       <tr><td><code class="env-key">GET /admin/sep/refund/list</code></td><td class="fa-only">لیست استردادهای روز</td><td class="en-only">Get daily refund list</td></tr>
       <tr><td><code class="env-key">POST /admin/sep/refund/status</code></td><td class="fa-only">وضعیت استرداد</td><td class="en-only">Get refund status</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── SANDBOX ── -->
+<section class="section" id="sandbox">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">Sandbox زرین‌پال</span><span class="en-only">Zarinpal Sandbox</span></h2>
+  <p class="section-sub fa-only">برای تست بدون پول واقعی، از محیط sandbox زرین‌پال استفاده کنید. هیچ اعتبار اضافه‌ای نیاز نیست — همان <code>ZARINPAL_MERCHANT</code> کافی است.</p>
+  <p class="section-sub en-only">Test without real money using the Zarinpal sandbox. No extra credentials needed — the same <code>ZARINPAL_MERCHANT</code> is used.</p>
+
+  <p style="font-size:13px;font-weight:600;color:var(--black);margin:18px 0 8px;" class="fa-only">روش ۱ — per-request (توصیه شده برای تست):</p>
+  <p style="font-size:13px;font-weight:600;color:var(--black);margin:18px 0 8px;" class="en-only">Option A — per-request (recommended for testing):</p>
+  <div class="code-block"><div class="code-header"><span class="code-lang">json</span></div>
+<pre>{ <span class="key">"orderId"</span>: <span class="str">"test-001"</span>, <span class="key">"amount"</span>: <span class="num">10000</span>, <span class="key">"gateway"</span>: <span class="str">"zarinpal_sandbox"</span> }</pre></div>
+
+  <p style="font-size:13px;font-weight:600;color:var(--black);margin:18px 0 8px;" class="fa-only">روش ۲ — سوئیچ سراسری (همه پرداخت‌های zarinpal):</p>
+  <p style="font-size:13px;font-weight:600;color:var(--black);margin:18px 0 8px;" class="en-only">Option B — global switch (all zarinpal calls):</p>
+  <div class="code-block"><div class="code-header"><span class="code-lang">env</span></div>
+<pre><span class="key">ZARINPAL_SANDBOX</span>=<span class="str">true</span></pre></div>
+
+  <table class="env-table" style="margin-top:18px;">
+    <thead><tr><th></th><th class="fa-only">Sandbox</th><th class="en-only">Sandbox</th><th class="fa-only">Production</th><th class="en-only">Production</th></tr></thead>
+    <tbody>
+      <tr><td class="fa-only">آدرس API</td><td class="en-only">API base</td><td><code>sandbox.zarinpal.com/pg/v4/payment/</code></td><td><code>payment.zarinpal.com/pg/v4/payment/</code></td></tr>
+      <tr><td class="fa-only">صفحه پرداخت</td><td class="en-only">Payment page</td><td><code>sandbox.zarinpal.com/pg/StartPay/</code></td><td><code>payment.zarinpal.com/pg/StartPay/</code></td></tr>
+      <tr><td class="fa-only">Merchant ID</td><td class="en-only">Merchant ID</td><td class="fa-only">همان <code>ZARINPAL_MERCHANT</code></td><td class="en-only">Same <code>ZARINPAL_MERCHANT</code></td><td class="fa-only">همان <code>ZARINPAL_MERCHANT</code></td><td class="en-only">Same <code>ZARINPAL_MERCHANT</code></td></tr>
+      <tr><td class="fa-only">وب‌هوک</td><td class="en-only">Webhook</td><td class="fa-only">ارسال می‌شود — payload یکسان</td><td class="en-only">Fired — identical payload</td><td class="fa-only">ارسال می‌شود</td><td class="en-only">Fired</td></tr>
     </tbody>
   </table>
 </section>

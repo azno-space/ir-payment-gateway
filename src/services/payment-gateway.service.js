@@ -27,6 +27,7 @@ const paymentAxios = axios.create({
 
 const ZIBAL_MERCHANT = process.env.ZIBAL_MERCHANT || '';
 const ZARINPAL_MERCHANT = process.env.ZARINPAL_MERCHANT || '';
+const ZARINPAL_SANDBOX = (process.env.ZARINPAL_SANDBOX || 'false').toLowerCase().trim() === 'true';
 const SEP_TERMINAL_ID = process.env.SEP_TERMINAL_ID || '';
 const SEP_USERNAME = process.env.SEP_USERNAME || '';
 const SEP_PASSWORD = process.env.SEP_PASSWORD || '';
@@ -90,44 +91,59 @@ const zibalVerifyPayment = async (trackId) => {
   }
 };
 
-const zarinpalRequestPayment = async ({ amount, orderId, mobile, timeout, retries }) => {
-  if (!ZARINPAL_MERCHANT) return { errors: ['ZARINPAL_MERCHANT not configured'] };
-  try {
-    return await retry(
-      async () =>
-        (await paymentAxios.post(
-          'https://payment.zarinpal.com/pg/v4/payment/request.json',
-          {
-            merchant_id: ZARINPAL_MERCHANT,
-            amount,
-            callback_url: getCbUrl(orderId),
-            description: 'Payment',
-            mobile,
-            order_id: orderId,
-            metadata: { mobile, email: '', order_id: orderId },
-          },
-          { timeout: timeout || REQUEST_TIMEOUT_MS },
-        )).data,
-      retries || REQUEST_RETRIES,
-    );
-  } catch (err) {
-    return { errors: [err.message] };
-  }
-};
+const ZARINPAL_API_BASE = ZARINPAL_SANDBOX
+  ? 'https://sandbox.zarinpal.com/pg/v4/payment/'
+  : 'https://payment.zarinpal.com/pg/v4/payment/';
 
-const zarinpalVerifyPayment = async (authority, amount) => {
-  try {
-    return await retry(async () =>
+const ZARINPAL_PAY_BASE = ZARINPAL_SANDBOX
+  ? 'https://sandbox.zarinpal.com/pg/StartPay/'
+  : 'https://payment.zarinpal.com/pg/StartPay/';
+
+const ZARINPAL_SANDBOX_API_BASE = 'https://sandbox.zarinpal.com/pg/v4/payment/';
+const ZARINPAL_SANDBOX_PAY_BASE = 'https://sandbox.zarinpal.com/pg/StartPay/';
+
+function _buildZarinpalRequest({ apiBase, payBase, merchantId, amount, orderId, mobile, timeout, retries }) {
+  if (!merchantId) return Promise.resolve({ errors: ['ZARINPAL_MERCHANT not configured'] });
+  return retry(
+    async () =>
       (await paymentAxios.post(
-        'https://payment.zarinpal.com/pg/v4/payment/verify.json',
-        { merchant_id: ZARINPAL_MERCHANT, authority, amount },
-        { timeout: 15000 },
+        `${apiBase}request.json`,
+        {
+          merchant_id: merchantId,
+          amount,
+          callback_url: getCbUrl(orderId),
+          description: 'Payment',
+          mobile,
+          order_id: orderId,
+          metadata: { mobile, email: '', order_id: orderId },
+        },
+        { timeout: timeout || REQUEST_TIMEOUT_MS },
       )).data,
-    );
-  } catch (err) {
-    throw new Error(`Zarinpal verify network error: ${err.message}`);
-  }
-};
+    retries || REQUEST_RETRIES,
+  ).catch((err) => ({ errors: [err.message] }));
+}
+
+function _buildZarinpalVerify({ apiBase, merchantId, authority, amount }) {
+  return retry(async () =>
+    (await paymentAxios.post(
+      `${apiBase}verify.json`,
+      { merchant_id: merchantId, authority, amount },
+      { timeout: 15000 },
+    )).data,
+  ).catch((err) => { throw new Error(`Zarinpal verify network error: ${err.message}`); });
+}
+
+const zarinpalRequestPayment = ({ amount, orderId, mobile, timeout, retries }) =>
+  _buildZarinpalRequest({ apiBase: ZARINPAL_API_BASE, payBase: ZARINPAL_PAY_BASE, merchantId: ZARINPAL_MERCHANT, amount, orderId, mobile, timeout, retries });
+
+const zarinpalVerifyPayment = (authority, amount) =>
+  _buildZarinpalVerify({ apiBase: ZARINPAL_API_BASE, merchantId: ZARINPAL_MERCHANT, authority, amount });
+
+const zarinpalSandboxRequestPayment = ({ amount, orderId, mobile, timeout, retries }) =>
+  _buildZarinpalRequest({ apiBase: ZARINPAL_SANDBOX_API_BASE, payBase: ZARINPAL_SANDBOX_PAY_BASE, merchantId: ZARINPAL_MERCHANT, amount, orderId, mobile, timeout, retries });
+
+const zarinpalSandboxVerifyPayment = (authority, amount) =>
+  _buildZarinpalVerify({ apiBase: ZARINPAL_SANDBOX_API_BASE, merchantId: ZARINPAL_MERCHANT, authority, amount });
 
 const sepRequestPayment = async ({ amount, orderId, mobile, timeout, retries }) => {
   if (!SEP_TERMINAL_ID) return { Status: -1, ErrorDesc: 'SEP_TERMINAL_ID not configured' };
@@ -290,6 +306,8 @@ module.exports = {
   zibalVerifyPayment,
   zarinpalRequestPayment,
   zarinpalVerifyPayment,
+  zarinpalSandboxRequestPayment,
+  zarinpalSandboxVerifyPayment,
   sepRequestPayment,
   sepVerifyPayment,
   sepRefundReg,

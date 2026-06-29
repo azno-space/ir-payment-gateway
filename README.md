@@ -8,7 +8,7 @@ A standalone, database-free Iranian payment gateway service supporting **Zibal**
 
 ## Features
 
-- **Three gateways**: Zibal, Zarinpal, SEP — switchable per request or forced globally
+- **Four gateways**: Zibal, Zarinpal, Zarinpal Sandbox, SEP — switchable per request or forced globally
 - **Automatic fail-over**: SEP → Zarinpal on timeout (configurable)
 - **Webhook-driven**: on success/failure, POST to your callback URL with a signed payload
 - **Retry queue**: failed webhook calls are retried with exponential back-off, persisted to disk
@@ -49,7 +49,8 @@ Copy `.env.example` to `.env` and fill in the values.
 | Variable | Description |
 |---|---|
 | `ZIBAL_MERCHANT` | Zibal merchant ID |
-| `ZARINPAL_MERCHANT` | Zarinpal 36-char merchant ID |
+| `ZARINPAL_MERCHANT` | Zarinpal 36-char merchant ID (also used for `zarinpal_sandbox`) |
+| `ZARINPAL_SANDBOX` | Set to `true` to use sandbox URLs for the `zarinpal` gateway globally |
 | `SEP_TERMINAL_ID` | SEP terminal ID |
 | `SEP_USERNAME` | SEP refund username |
 | `SEP_PASSWORD` | SEP refund password |
@@ -58,7 +59,7 @@ Copy `.env.example` to `.env` and fill in the values.
 
 | Variable | Default | Description |
 |---|---|---|
-| `FORCED_PAYMENT_GATEWAY` | _(none)_ | Force all payments through one gateway (`zibal`, `zarinpal`, `sep`) |
+| `FORCED_PAYMENT_GATEWAY` | _(none)_ | Force all payments through one gateway (`zibal`, `zarinpal`, `zarinpal_sandbox`, `sep`) |
 | `PAYMENT_FAILOVER_ENABLED` | `true` | Enable automatic fail-over chains |
 | `GATEWAY_REQUEST_TIMEOUT_MS` | `8000` | Per-gateway request timeout (ms) |
 | `GATEWAY_REQUEST_RETRIES` | `1` | Retries on network error |
@@ -124,7 +125,7 @@ Initiate a payment.
 | `orderId` | string | Yes | Your order identifier (passed to gateway as ResNum/orderId) |
 | `amount` | number | Yes | Amount in Rials |
 | `mobile` | string | No | Customer mobile (some gateways prefill the form) |
-| `gateway` | string | No | `zibal`, `zarinpal`, or `sep`. Falls back to `zarinpal` if omitted |
+| `gateway` | string | No | `zibal`, `zarinpal`, `zarinpal_sandbox`, or `sep`. Falls back to `zarinpal` if omitted |
 
 **Response `200`:**
 
@@ -197,6 +198,37 @@ Query params: `gateway`, `code` (and optionally `amount` for Zarinpal).
 
 ---
 
+## Zarinpal Sandbox
+
+For testing without real money, use the Zarinpal sandbox environment.
+
+**Option A — per-request (recommended for testing):**
+
+```json
+{ "orderId": "test-001", "amount": 10000, "gateway": "zarinpal_sandbox" }
+```
+
+Pass `gateway: "zarinpal_sandbox"` in your payment request. The same `ZARINPAL_MERCHANT` is used; no extra credentials needed.
+
+**Option B — global switch:**
+
+```env
+ZARINPAL_SANDBOX=true
+```
+
+This redirects all `zarinpal` gateway calls to sandbox URLs. The gateway name stays `zarinpal` in requests.
+
+| | Sandbox | Production |
+|---|---|---|
+| API base | `sandbox.zarinpal.com/pg/v4/payment/` | `payment.zarinpal.com/pg/v4/payment/` |
+| Payment page | `sandbox.zarinpal.com/pg/StartPay/` | `payment.zarinpal.com/pg/StartPay/` |
+| Merchant ID | Same `ZARINPAL_MERCHANT` | Same `ZARINPAL_MERCHANT` |
+| Webhook fired | Yes — identical payload | Yes |
+
+> The sandbox does not charge real money. Use it to verify your webhook handler before going live.
+
+---
+
 ## Fail-over Chains
 
 When `PAYMENT_FAILOVER_ENABLED=true` (default), failing gateways fall over automatically:
@@ -205,6 +237,7 @@ When `PAYMENT_FAILOVER_ENABLED=true` (default), failing gateways fall over autom
 |---|---|
 | `sep` | SEP → Zarinpal |
 | `zarinpal` | Zarinpal only |
+| `zarinpal_sandbox` | Zarinpal Sandbox only |
 | `zibal` | Zibal only |
 
 The last gateway in the chain gets longer timeouts (`GATEWAY_LAST_TIMEOUT_MS`) and more retries.

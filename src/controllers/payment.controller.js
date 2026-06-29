@@ -1,6 +1,8 @@
 const {
   zibalVerifyPayment,
   zarinpalVerifyPayment,
+  zarinpalSandboxRequestPayment,
+  zarinpalSandboxVerifyPayment,
   sepVerifyPayment,
   zibalRequestPayment,
   zarinpalRequestPayment,
@@ -31,7 +33,7 @@ const frontUrl = (p) => `${FRONT_BASE_URL}${p}`;
 const PAYMENT_SUCCESS_WEBHOOK_URL = process.env.PAYMENT_SUCCESS_WEBHOOK_URL || '';
 const PAYMENT_FAILURE_WEBHOOK_URL = process.env.PAYMENT_FAILURE_WEBHOOK_URL || '';
 
-const VALID_GATEWAYS = ['zibal', 'zarinpal', 'sep'];
+const VALID_GATEWAYS = ['zibal', 'zarinpal', 'zarinpal_sandbox', 'sep'];
 const FORCED_GATEWAY = (process.env.FORCED_PAYMENT_GATEWAY || '').toLowerCase().trim();
 
 const PAYMENT_FAILOVER_ENABLED =
@@ -40,6 +42,7 @@ const PAYMENT_FAILOVER_ENABLED =
 const FAILOVER_CHAINS = {
   sep: ['sep', 'zarinpal'],
   zarinpal: ['zarinpal'],
+  zarinpal_sandbox: ['zarinpal_sandbox'],
   zibal: ['zibal'],
 };
 
@@ -75,12 +78,17 @@ async function attemptGatewayRequest(gateway, { amount, orderId, mobile, timeout
     return { ok: false, gateway, reason: raw.message || 'Zibal returned non-100 result', raw };
   }
 
-  if (gateway === 'zarinpal') {
-    const raw = await zarinpalRequestPayment({ amount, orderId, mobile, timeout, retries });
+  if (gateway === 'zarinpal' || gateway === 'zarinpal_sandbox') {
+    const isSandbox = gateway === 'zarinpal_sandbox';
+    const requestFn = isSandbox ? zarinpalSandboxRequestPayment : zarinpalRequestPayment;
+    const payBase = isSandbox
+      ? 'https://sandbox.zarinpal.com/pg/StartPay/'
+      : 'https://payment.zarinpal.com/pg/StartPay/';
+    const raw = await requestFn({ amount, orderId, mobile, timeout, retries });
     if (raw.data && raw.data.code === 100 && raw.data.authority) {
       return {
         ok: true, gateway,
-        targetUrl: `https://payment.zarinpal.com/pg/StartPay/${raw.data.authority}`,
+        targetUrl: `${payBase}${raw.data.authority}`,
         identifier: raw.data.authority, raw,
       };
     }
@@ -416,7 +424,7 @@ async function handlePaymentCallback(req, res) {
   let verifyDetails = {};
 
   const isZibal = gateway === 'zibal';
-  const isZarinpal = gateway === 'zarinpal';
+  const isZarinpal = gateway === 'zarinpal' || gateway === 'zarinpal_sandbox';
   const isSep = gateway === 'sep';
 
   if (isZibal) {
@@ -453,7 +461,9 @@ async function handlePaymentCallback(req, res) {
         showSupport: true,
       }));
     }
-    verifyResult = await zarinpalVerifyPayment(code, amount);
+    verifyResult = gateway === 'zarinpal_sandbox'
+      ? await zarinpalSandboxVerifyPayment(code, amount)
+      : await zarinpalVerifyPayment(code, amount);
     verifyOk = verifyResult?.data && (verifyResult.data.code === 100 || verifyResult.data.code === 101);
     if (verifyOk) {
       verifyDetails = {
