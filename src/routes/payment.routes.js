@@ -6,6 +6,10 @@ const {
   handleSepCallbackDebug,
   adminVerifyOnly,
   adminTriggerWebhook,
+  adminGetErrorLog,
+  adminGetQueue,
+  adminRemoveQueueItem,
+  adminZarinpalUnverified,
   adminSepRefundReg,
   adminSepRefundExec,
   adminSepRefundList,
@@ -32,6 +36,16 @@ router.get('/admin/verify-only', adminVerifyOnly);
 
 // Admin: manually trigger success webhook for a completed payment
 router.post('/admin/trigger-webhook', adminTriggerWebhook);
+
+// Admin: error log
+router.get('/admin/error-log', adminGetErrorLog);
+
+// Admin: webhook retry queue
+router.get('/admin/queue', adminGetQueue);
+router.delete('/admin/queue/:id', adminRemoveQueueItem);
+
+// Admin: fetch unverified payments from Zarinpal (paid but callback was missed)
+router.get('/admin/zarinpal-unverified', adminZarinpalUnverified);
 
 // Admin: SEP refund APIs
 router.post('/admin/sep/refund/reg', adminSepRefundReg);

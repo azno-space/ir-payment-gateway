@@ -11,7 +11,9 @@ const {
   sepRefundExec,
   sepGetDailyRefundList,
   sepGetRefundStatus,
+  getZarinpalUnverified,
 } = require('../services/payment-gateway.service');
+const { appendErrorLog, readErrorLog } = require('../utils/errorLogger');
 const { callWebhook, pingWebhook } = require('../services/webhook.service');
 const paymentSession = require('../services/payment-session.service');
 const paymentQueue = require('../services/payment-queue.service');
@@ -203,6 +205,7 @@ function notifyBaleFailure(errorDetails) {
       console.error('Failed to send Bale failure notification:', err.message),
     );
   });
+  appendErrorLog({ type: 'payment_failure', ...errorDetails });
 }
 
 // ─── Webhook dispatch ─────────────────────────────────────────────────────────
@@ -284,6 +287,19 @@ async function createPaymentRequest(req, res) {
     const numericAmount = Number(amount);
     if (Number.isNaN(numericAmount) || numericAmount < 0) {
       return res.status(400).json({ error: 'Invalid amount value' });
+    }
+
+    // Gateway minimums (in Rials): Zarinpal=1000, SEP=1000, Zibal=1000
+    const GATEWAY_MINIMUMS = { zarinpal: 1000, zarinpal_sandbox: 1000, sep: 1000, zibal: 1000 };
+    const resolvedForMin = resolveGateway(requestedGateway);
+    const minimum = GATEWAY_MINIMUMS[resolvedForMin] ?? 1000;
+    if (numericAmount < minimum) {
+      return res.status(422).json({
+        error: 'Amount below gateway minimum',
+        message: `Amount ${numericAmount} Rials is below the minimum of ${minimum} Rials required by ${resolvedForMin}. Free or low-value payments must be handled directly by your application without calling this service.`,
+        minimum,
+        received: numericAmount,
+      });
     }
 
     const primaryGateway = resolveGateway(requestedGateway);
@@ -666,6 +682,57 @@ async function adminTriggerWebhook(req, res) {
   return res.status(502).json({ success: false, error: result.error || 'Webhook failed', orderId });
 }
 
+// ─── GET /api/payments/admin/error-log ───────────────────────────────────────
+
+async function adminGetErrorLog(req, res) {
+  if (!checkAdminAuth(req)) return res.status(401).json({ error: 'Unauthorized' });
+  const logs  = readErrorLog();
+  const limit = Math.min(Number(req.query.limit || 50), 500);
+  return res.json({ count: logs.length, entries: logs.slice(-limit) });
+}
+
+// ─── GET /api/payments/admin/queue ───────────────────────────────────────────
+
+async function adminGetQueue(req, res) {
+  if (!checkAdminAuth(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+  const allItems   = paymentQueue.getAllItems();
+  const pending    = allItems.filter((i) => i.status === 'pending');
+  const completed  = allItems.filter((i) => i.status === 'completed');
+  const failed     = allItems.filter((i) => i.status === 'failed');
+
+  return res.json({
+    summary: {
+      total: allItems.length,
+      pending: pending.length,
+      completed: completed.length,
+      failed: failed.length,
+    },
+    items: allItems,
+  });
+}
+
+// ─── DELETE /api/payments/admin/queue/:id ────────────────────────────────────
+
+async function adminRemoveQueueItem(req, res) {
+  if (!checkAdminAuth(req)) return res.status(401).json({ error: 'Unauthorized' });
+  const { id } = req.params;
+  if (!id) return res.status(400).json({ error: 'id is required' });
+  paymentQueue.removeItem(id);
+  return res.json({ ok: true, removed: id });
+}
+
+// ─── GET /api/payments/admin/zarinpal-unverified ─────────────────────────────
+
+async function adminZarinpalUnverified(req, res) {
+  if (!checkAdminAuth(req)) return res.status(401).json({ error: 'Unauthorized' });
+  const result = await getZarinpalUnverified();
+  if (!result.ok) {
+    return res.status(502).json({ success: false, error: result.error, authorities: [] });
+  }
+  return res.json({ success: true, count: result.count, authorities: result.authorities });
+}
+
 // ─── SEP Refund APIs ──────────────────────────────────────────────────────────
 
 async function adminSepRefundReg(req, res) {
@@ -708,6 +775,10 @@ module.exports = {
   handleSepCallbackDebug,
   adminVerifyOnly,
   adminTriggerWebhook,
+  adminGetErrorLog,
+  adminGetQueue,
+  adminRemoveQueueItem,
+  adminZarinpalUnverified,
   adminSepRefundReg,
   adminSepRefundExec,
   adminSepRefundList,
