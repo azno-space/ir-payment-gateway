@@ -720,7 +720,7 @@ header(<span class="str">'Location: '</span>.<span class="kw">$r</span>->targetU
         <thead><tr><th class="fa-only">فیلد</th><th class="en-only">Field</th><th class="fa-only">نوع</th><th class="en-only">Type</th><th class="fa-only">توضیح</th><th class="en-only">Description</th></tr></thead>
         <tbody>
           <tr><td><code class="pname">orderId</code></td><td><code class="ptype">string</code></td><td class="pdesc fa-only">شناسه سفارش <span class="req">اجباری</span></td><td class="pdesc en-only">Your unique order ID <span class="req">Required</span></td></tr>
-          <tr><td><code class="pname">amount</code></td><td><code class="ptype">number</code></td><td class="pdesc fa-only">مبلغ به ریال <span class="req">اجباری</span></td><td class="pdesc en-only">Amount in Rials <span class="req">Required</span></td></tr>
+          <tr><td><code class="pname">amount</code></td><td><code class="ptype">number</code></td><td class="pdesc fa-only">مبلغ به ریال <span class="req">اجباری</span> — حداقل ۱۰۰۰ ریال. پرداخت‌های رایگان یا زیر حداقل باید مستقیماً توسط اپلیکیشن شما هندل شوند.</td><td class="pdesc en-only">Amount in Rials <span class="req">Required</span> — minimum 1,000 Rials. Free or below-minimum payments must be handled directly by your application.</td></tr>
           <tr><td><code class="pname">mobile</code></td><td><code class="ptype">string</code></td><td class="pdesc fa-only">موبایل کاربر <span class="opt">اختیاری</span></td><td class="pdesc en-only">Customer mobile <span class="opt">Optional</span></td></tr>
           <tr><td><code class="pname">gateway</code></td><td><code class="ptype">string</code></td><td class="pdesc fa-only"><code>sep</code>، <code>zarinpal</code>، <code>zarinpal_sandbox</code>، <code>zibal</code> <span class="opt">اختیاری</span></td><td class="pdesc en-only"><code>sep</code>, <code>zarinpal</code>, <code>zarinpal_sandbox</code>, <code>zibal</code> <span class="opt">Optional</span></td></tr>
         </tbody>
@@ -852,6 +852,55 @@ header(<span class="str">'Location: '</span>.<span class="kw">$r</span>->targetU
       <tr><td class="fa-only">وب‌هوک</td><td class="en-only">Webhook</td><td class="fa-only">ارسال می‌شود — payload یکسان</td><td class="en-only">Fired — identical payload</td><td class="fa-only">ارسال می‌شود</td><td class="en-only">Fired</td></tr>
     </tbody>
   </table>
+
+  <div style="margin-top:20px;padding:14px 18px;border-radius:8px;background:#fff8e6;border:1px solid #f5c542;">
+    <p style="margin:0 0 6px;font-weight:700;font-size:13px;" class="fa-only">⚠️ محدودیت‌های زرین‌پال Production</p>
+    <p style="margin:0 0 6px;font-weight:700;font-size:13px;" class="en-only">⚠️ Zarinpal Production Limitations</p>
+    <ul style="margin:0;padding-right:18px;padding-left:18px;font-size:13px;line-height:2;">
+      <li class="fa-only"><strong>دامنه callback:</strong> زرین‌پال production فقط callback URL هایی را می‌پذیرد که دامنه‌شان با دامنه ثبت‌شده در پنل مطابقت دارد. <code>localhost</code> قابل استفاده نیست.</li>
+      <li class="en-only"><strong>Callback domain:</strong> Zarinpal production only accepts callback URLs whose domain matches the domain registered in your Zarinpal panel. <code>localhost</code> will be rejected with error code <code>-14</code>.</li>
+      <li class="fa-only"><strong>HTTP 401:</strong> اگر خطای 401 دریافت کردید، ممکن است به دلیل Merchant ID نامعتبر، IP مسدودشده، یا عدم تطابق دامنه callback باشد.</li>
+      <li class="en-only"><strong>HTTP 401:</strong> A 401 response can indicate an invalid Merchant ID, a blocked IP, or a callback domain mismatch.</li>
+      <li class="fa-only"><strong>تست لوکال:</strong> برای توسعه محلی، همیشه از <code>gateway: "zarinpal_sandbox"</code> استفاده کنید.</li>
+      <li class="en-only"><strong>Local testing:</strong> Always use <code>gateway: "zarinpal_sandbox"</code> for local development — sandbox has no domain restriction.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ── FREE PAYMENTS ── -->
+<section class="section" id="free-payments">
+  <h2 class="section-title"><span class="dot"></span><span class="fa-only">پرداخت‌های رایگان و زیر حداقل</span><span class="en-only">Free &amp; Below-Minimum Payments</span></h2>
+  <p class="section-sub fa-only">این سرویس پرداخت‌های زیر حداقل درگاه را رد می‌کند. اپلیکیشن شما باید این حالت را پیش از فراخوانی این سرویس تشخیص دهد.</p>
+  <p class="section-sub en-only">This service rejects payments below each gateway's minimum. Your application must detect and handle free or low-value orders before calling this service.</p>
+
+  <table class="env-table" style="margin-bottom:18px;">
+    <thead><tr><th class="fa-only">درگاه</th><th class="en-only">Gateway</th><th class="fa-only">حداقل مبلغ</th><th class="en-only">Minimum Amount</th></tr></thead>
+    <tbody>
+      <tr><td>Zarinpal / Zarinpal Sandbox</td><td>۱,۰۰۰ ریال / 1,000 Rials</td></tr>
+      <tr><td>SEP (Saman)</td><td>۱,۰۰۰ ریال / 1,000 Rials</td></tr>
+      <tr><td>Zibal</td><td>۱,۰۰۰ ریال / 1,000 Rials</td></tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:13px;font-weight:600;color:var(--black);margin:0 0 8px;" class="fa-only">پاسخ خطا برای مبلغ زیر حداقل (422):</p>
+  <p style="font-size:13px;font-weight:600;color:var(--black);margin:0 0 8px;" class="en-only">Error response for below-minimum amount (422):</p>
+  <div class="code-block"><div class="code-header"><span class="code-lang">json</span></div>
+<pre>{
+  <span class="key">"error"</span>:    <span class="str">"Amount below gateway minimum"</span>,
+  <span class="key">"minimum"</span>:  <span class="num">1000</span>,
+  <span class="key">"received"</span>: <span class="num">0</span>
+}</pre></div>
+
+  <div style="margin-top:16px;padding:14px 18px;border-radius:8px;background:#f0f7ff;border:1px solid #b0d0f0;">
+    <p style="margin:0 0 6px;font-weight:700;font-size:13px;" class="fa-only">💡 رویکرد توصیه‌شده</p>
+    <p style="margin:0 0 6px;font-weight:700;font-size:13px;" class="en-only">💡 Recommended approach</p>
+    <ul style="margin:0;padding-right:18px;padding-left:18px;font-size:13px;line-height:2;">
+      <li class="fa-only">قبل از فراخوانی این سرویس، مبلغ را بررسی کنید.</li>
+      <li class="en-only">Check the amount before calling this service.</li>
+      <li class="fa-only">اگر مبلغ صفر یا زیر ۱۰۰۰ ریال است، order را مستقیماً تأیید کنید بدون رفتن به درگاه.</li>
+      <li class="en-only">If amount is zero or below 1,000 Rials, confirm the order directly in your application without going to the gateway.</li>
+    </ul>
+  </div>
 </section>
 
 <!-- ── FAILOVER ── -->
