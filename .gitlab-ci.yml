@@ -1,0 +1,4 @@
+include:
+  - project: azno/devops
+    ref: main
+    file: 'azno-payment-gateway.gitlab-ci.yml'
