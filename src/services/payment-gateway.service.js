@@ -113,14 +113,27 @@ function _buildZarinpalRequest({ apiBase, payBase, merchantId, amount, orderId, 
           amount,
           callback_url: getCbUrl(orderId),
           description: 'Payment',
-          mobile,
+          ...(mobile ? { mobile } : {}),
           order_id: orderId,
-          metadata: { mobile, email: '', order_id: orderId },
+          metadata: { ...(mobile ? { mobile } : {}), email: '', order_id: orderId },
         },
         { timeout: timeout || REQUEST_TIMEOUT_MS },
       )).data,
     retries || REQUEST_RETRIES,
-  ).catch((err) => ({ errors: [err.message] }));
+  ).catch((err) => {
+    const status = err.response?.status;
+    const body = err.response?.data;
+    if (status === 401) {
+      return { errors: ['Zarinpal authentication failed (HTTP 401). Possible causes: invalid ZARINPAL_MERCHANT, callback URL domain not registered in Zarinpal panel, or IP not whitelisted. Use gateway=zarinpal_sandbox for local testing.'] };
+    }
+    if (status === 422 && body?.errors?.message) {
+      return { errors: [`Zarinpal validation error: ${body.errors.message}`] };
+    }
+    if (body?.errors) {
+      return { errors: Array.isArray(body.errors) ? body.errors : [JSON.stringify(body.errors)] };
+    }
+    return { errors: [err.message] };
+  });
 }
 
 function _buildZarinpalVerify({ apiBase, merchantId, authority, amount }) {
@@ -301,6 +314,33 @@ const sepGetRefundStatus = async ({ refundId }) => {
   return soapPost('http://tempuri.org/IsrvRefundV2/GetRefundStatus', xml);
 };
 
+// Returns a list of unverified Zarinpal payments (paid but verify not called yet).
+// Useful for recovering payments where the callback was missed.
+const ZARINPAL_UNVERIFIED_URL = ZARINPAL_SANDBOX
+  ? 'https://sandbox.zarinpal.com/pg/v4/payment/unVerified.json'
+  : 'https://payment.zarinpal.com/pg/v4/payment/unVerified.json';
+
+const getZarinpalUnverified = async () => {
+  if (!ZARINPAL_MERCHANT) return { ok: false, error: 'ZARINPAL_MERCHANT not configured', authorities: [] };
+  try {
+    const res = await paymentAxios.post(
+      ZARINPAL_UNVERIFIED_URL,
+      { merchant_id: ZARINPAL_MERCHANT },
+      {
+        timeout: 15000,
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+        validateStatus: () => true,
+      },
+    );
+    if (res.data?.data?.authorities) {
+      return { ok: true, count: res.data.data.authorities.length, authorities: res.data.data.authorities };
+    }
+    return { ok: false, error: 'Unexpected Zarinpal response', raw: res.data, authorities: [] };
+  } catch (err) {
+    return { ok: false, error: err.message, authorities: [] };
+  }
+};
+
 module.exports = {
   zibalRequestPayment,
   zibalVerifyPayment,
@@ -314,4 +354,5 @@ module.exports = {
   sepRefundExec,
   sepGetDailyRefundList,
   sepGetRefundStatus,
+  getZarinpalUnverified,
 };
