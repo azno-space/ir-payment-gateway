@@ -213,9 +213,11 @@ async function sendErrorNotificationToBale(errorDetails) {
   const message = formatErrorMessage(errorDetails);
   try {
     await sendBaleMessageOnce({ botToken: BALE_BOT_TOKEN, chatId: BALE_FAILED_CHAT_ID, message });
+    setImmediate(() => sendTelegramNotification({ botToken: TELEGRAM_FAILED_BOT_TOKEN, chatId: TELEGRAM_FAILED_CHAT_ID, message }));
     return true;
   } catch (err) {
     queueBaleNotification({ botToken: BALE_BOT_TOKEN, chatId: BALE_FAILED_CHAT_ID, message, source: 'error' });
+    setImmediate(() => sendTelegramNotification({ botToken: TELEGRAM_FAILED_BOT_TOKEN, chatId: TELEGRAM_FAILED_CHAT_ID, message }));
     return false;
   }
 }
@@ -227,54 +229,59 @@ async function sendFailedPaymentNotificationToBale(errorDetails) {
   const message = formatErrorMessage(errorDetails);
   try {
     await sendBaleMessageOnce({ botToken, chatId, message });
+    setImmediate(() => sendTelegramNotification({ botToken: TELEGRAM_FAILED_BOT_TOKEN, chatId: TELEGRAM_FAILED_CHAT_ID, message }));
     return true;
   } catch (err) {
     queueBaleNotification({ botToken, chatId, message, source: 'failed-payment' });
+    setImmediate(() => sendTelegramNotification({ botToken: TELEGRAM_FAILED_BOT_TOKEN, chatId: TELEGRAM_FAILED_CHAT_ID, message }));
     return false;
   }
 }
 
 async function sendPaymentSuccessNotificationToBale(details) {
-  if (!BALE_BOT_TOKEN || !BALE_CHAT_ID) return false;
   const message = formatSuccessMessage(details);
-  try {
-    await retryBaleRequest(async () =>
-      notificationAxios.post(
-        `${BALE_BASE_URL}/bot${BALE_BOT_TOKEN}/sendMessage`,
-        { chat_id: BALE_CHAT_ID, text: message, parse_mode: 'HTML' },
-        { timeout: 20000 },
-      ),
-    );
-    return true;
-  } catch (err) {
-    console.error('[Notification] Bale success notification failed:', err.message);
-    return false;
+  if (BALE_BOT_TOKEN && BALE_CHAT_ID) {
+    try {
+      await retryBaleRequest(async () =>
+        notificationAxios.post(
+          `${BALE_BASE_URL}/bot${BALE_BOT_TOKEN}/sendMessage`,
+          { chat_id: BALE_CHAT_ID, text: message, parse_mode: 'HTML' },
+          { timeout: 20000 },
+        ),
+      );
+    } catch (err) {
+      console.error('[Notification] Bale success notification failed:', err.message);
+    }
   }
+  setImmediate(() => sendTelegramNotification({ botToken: TELEGRAM_BOT_TOKEN, chatId: TELEGRAM_CHAT_ID, message }));
+  return true;
 }
 
 async function sendWarningNotificationToBale(details) {
-  if (!BALE_BOT_TOKEN || !BALE_FAILED_CHAT_ID) return false;
   const message = formatWarningMessage(details);
-  try {
-    await sendBaleMessageOnce({ botToken: BALE_BOT_TOKEN, chatId: BALE_FAILED_CHAT_ID, message });
-    return true;
-  } catch (err) {
-    console.warn('[Notification] Bale warning notification failed:', err.message);
-    return false;
+  if (BALE_BOT_TOKEN && BALE_FAILED_CHAT_ID) {
+    try {
+      await sendBaleMessageOnce({ botToken: BALE_BOT_TOKEN, chatId: BALE_FAILED_CHAT_ID, message });
+    } catch (err) {
+      console.warn('[Notification] Bale warning notification failed:', err.message);
+    }
   }
+  setImmediate(() => sendTelegramNotification({ botToken: TELEGRAM_FAILED_BOT_TOKEN, chatId: TELEGRAM_FAILED_CHAT_ID, message }));
+  return true;
 }
 
 async function sendBaleRecoveryMessage(message) {
   const botToken = BALE_FAILED_BOT_TOKEN || BALE_BOT_TOKEN;
   const chatId = BALE_FAILED_CHAT_ID;
-  if (!botToken || !chatId) return false;
-  try {
-    await sendBaleMessageOnce({ botToken, chatId, message });
-    return true;
-  } catch (err) {
-    queueBaleNotification({ botToken, chatId, message, source: 'recovery-log' });
-    return false;
+  if (botToken && chatId) {
+    try {
+      await sendBaleMessageOnce({ botToken, chatId, message });
+    } catch (err) {
+      queueBaleNotification({ botToken, chatId, message, source: 'recovery-log' });
+    }
   }
+  setImmediate(() => sendTelegramNotification({ botToken: TELEGRAM_FAILED_BOT_TOKEN, chatId: TELEGRAM_FAILED_CHAT_ID, message }));
+  return true;
 }
 
 module.exports = {
