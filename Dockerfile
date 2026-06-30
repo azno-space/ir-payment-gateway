@@ -7,7 +7,7 @@ RUN npm ci --omit=dev
 
 COPY . .
 
-RUN mkdir -p data logs
+RUN mkdir -p data logs && chown -R node:node data logs
 
 ENV NODE_ENV=production
 ENV PORT=3000
