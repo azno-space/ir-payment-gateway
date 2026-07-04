@@ -6,7 +6,13 @@
 
 A standalone, database-free Iranian payment gateway service supporting **Zibal**, **Zarinpal**, and **SEP (Saman/Shaparak)**. Instead of writing to a database, it calls configurable webhook URLs when a payment succeeds or fails — your application owns the data layer.
 
-## Features
+## Documentation
+
+**Full developer guide (فارسی / English):** [https://azno-space.github.io/ir-payment-gateway/](https://azno-space.github.io/ir-payment-gateway/)
+
+Includes getting started, configuration, API reference, gateway setup (Zibal / Zarinpal / SEP), webhook payloads, admin endpoints, and Docker deployment.
+
+---
 
 - **Four gateways**: Zibal, Zarinpal, Zarinpal Sandbox, SEP — switchable per request or forced globally
 - **Automatic fail-over**: SEP → Zarinpal on timeout (configurable)
