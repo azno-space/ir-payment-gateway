@@ -574,8 +574,17 @@ pre{padding:18px;overflow-x:auto;font-family:var(--font-mono);font-size:12.5px;l
     <button type="button" class="sidebar-link sidebar-sub" data-panel="usage-api" onclick="navigateTo('usage-api', this)">
       <span>API</span>
     </button>
-    <button type="button" class="sidebar-link sidebar-sub" data-panel="usage-advanced" onclick="navigateTo('usage-advanced', this)">
-      <span class="fa-only">پیشرفته</span><span class="en-only">Advanced</span>
+    <button type="button" class="sidebar-link sidebar-sub" data-panel="usage-failover" onclick="navigateTo('usage-failover', this)">
+      <span>Fail-over</span>
+    </button>
+    <button type="button" class="sidebar-link sidebar-sub" data-panel="usage-retry" onclick="navigateTo('usage-retry', this)">
+      <span class="fa-only">صف Retry</span><span class="en-only">Retry Queue</span>
+    </button>
+    <button type="button" class="sidebar-link sidebar-sub" data-panel="usage-docker" onclick="navigateTo('usage-docker', this)">
+      <span>Docker</span>
+    </button>
+    <button type="button" class="sidebar-link sidebar-sub" data-panel="usage-min-amount" onclick="navigateTo('usage-min-amount', this)">
+      <span class="fa-only">حداقل مبلغ</span><span class="en-only">Min Amount</span>
     </button>
   </div>
 </nav>
@@ -1395,31 +1404,15 @@ header(<span class="str">'Location: '</span>.<span class="kw">$r</span>->targetU
       </div>
 </div>
 
-<!-- ══ PANEL: USAGE — ADVANCED ══ -->
-<div class="page-panel" id="panel-usage-advanced">
+<!-- ══ PANEL: USAGE — FAIL-OVER ══ -->
+<div class="page-panel" id="panel-usage-failover">
   <div class="panel-header">
     <p class="panel-breadcrumb fa-only">نحوه استفاده از پروژه</p>
     <p class="panel-breadcrumb en-only">Using the Project</p>
-    <h2 class="panel-title fa-only">پیشرفته</h2>
-    <h2 class="panel-title en-only">Advanced</h2>
-    <p class="panel-desc fa-only">Fail-over، صف retry، Docker و حداقل مبلغ.</p>
-    <p class="panel-desc en-only">Fail-over, retry queue, Docker, and minimum amounts.</p>
+    <h2 class="panel-title">Fail-over</h2>
+    <p class="panel-desc fa-only">سوئیچ خودکار به درگاه بعدی در صورت timeout یا خطا.</p>
+    <p class="panel-desc en-only">Automatic switch to the next gateway on timeout or error.</p>
   </div>
-      <div class="tabs inner-tabs">
-        <div class="tab-nav">
-          <button class="tab-btn active" onclick="switchTab(this,'adv-sandbox')">Sandbox</button>
-          <button class="tab-btn" onclick="switchTab(this,'adv-failover')">Fail-over</button>
-          <button class="tab-btn" onclick="switchTab(this,'adv-retry')"><span class="fa-only">صف Retry</span><span class="en-only">Retry Queue</span></button>
-          <button class="tab-btn" onclick="switchTab(this,'adv-docker')">Docker</button>
-          <button class="tab-btn" onclick="switchTab(this,'adv-free')"><span class="fa-only">حداقل مبلغ</span><span class="en-only">Min Amount</span></button>
-        </div>
-        <div id="adv-sandbox" class="tab-content active">
-  <p class="section-sub fa-only">راهنمای کامل تست بدون پرداخت واقعی — شامل مراحل فعال‌سازی و نکته «فقط زرین‌پال» — در بخش <a onclick="navigateTo('sandbox', document.querySelector('[data-panel=sandbox]'))" style="color:var(--blue);font-weight:600;cursor:pointer">تست درگاه بدون پرداخت واقعی</a> در منو قرار دارد.</p>
-  <p class="section-sub en-only">Full guide to testing without real payment — activation steps and the "Zarinpal only" note — is in <a onclick="navigateTo('sandbox', document.querySelector('[data-panel=sandbox]'))" style="color:var(--blue);font-weight:600;cursor:pointer">Test Without Real Payment</a> in the sidebar.</p>
-  <div class="code-block"><div class="code-header"><span class="code-lang">json</span></div>
-<pre>{ <span class="key">"orderId"</span>: <span class="str">"test-001"</span>, <span class="key">"amount"</span>: <span class="num">10000</span>, <span class="key">"gateway"</span>: <span class="str">"zarinpal_sandbox"</span> }</pre></div>
-        </div>
-        <div id="adv-failover" class="tab-content">
   <p class="section-sub fa-only">اگر درگاه اصلی timeout بخورد یا خطا بدهد، سرویس به درگاه بعدی سوئیچ می‌کند:</p>
   <p class="section-sub en-only">If the primary gateway times out or errors, the service switches to the next in the chain:</p>
   <div class="failover">
@@ -1452,8 +1445,18 @@ header(<span class="str">'Location: '</span>.<span class="kw">$r</span>->targetU
       <div class="gw-note en-only">Always uses the selected gateway</div>
     </div>
   </div>
-        </div>
-        <div id="adv-retry" class="tab-content">
+</div>
+
+<!-- ══ PANEL: USAGE — RETRY QUEUE ══ -->
+<div class="page-panel" id="panel-usage-retry">
+  <div class="panel-header">
+    <p class="panel-breadcrumb fa-only">نحوه استفاده از پروژه</p>
+    <p class="panel-breadcrumb en-only">Using the Project</p>
+    <h2 class="panel-title fa-only">صف Retry</h2>
+    <h2 class="panel-title en-only">Retry Queue</h2>
+    <p class="panel-desc fa-only">تلاش مجدد خودکار برای ارسال وب‌هوک در صورت خطا.</p>
+    <p class="panel-desc en-only">Automatic webhook retry when delivery fails.</p>
+  </div>
   <p class="section-sub fa-only">اگر URL وب‌هوک شما در دسترس نباشد، payload در <code>data/payment-queue.json</code> ذخیره می‌شود.</p>
   <p class="section-sub en-only">If your webhook URL is unavailable, the payload is saved to <code>data/payment-queue.json</code>.</p>
   <div class="cards" style="grid-template-columns:repeat(3,1fr)">
@@ -1478,9 +1481,18 @@ header(<span class="str">'Location: '</span>.<span class="kw">$r</span>->targetU
 curl http://localhost:3000/api/test/queue
 <span class="cmt"># بررسی سلامت</span>
 curl http://localhost:3000/api/test/health</pre></div>
-        </div>
-        <div id="adv-docker" class="tab-content">
-  <div class="tabs">
+</div>
+
+<!-- ══ PANEL: USAGE — DOCKER ══ -->
+<div class="page-panel" id="panel-usage-docker">
+  <div class="panel-header">
+    <p class="panel-breadcrumb fa-only">نحوه استفاده از پروژه</p>
+    <p class="panel-breadcrumb en-only">Using the Project</p>
+    <h2 class="panel-title">Docker</h2>
+    <p class="panel-desc fa-only">اجرای سرویس با docker run یا docker compose.</p>
+    <p class="panel-desc en-only">Run the service with docker run or docker compose.</p>
+  </div>
+  <div class="tabs inner-tabs">
     <div class="tab-nav">
       <button class="tab-btn active" onclick="switchTab(this,'td-run')">docker run</button>
       <button class="tab-btn" onclick="switchTab(this,'td-compose')">docker compose</button>
@@ -1512,8 +1524,18 @@ docker run -d \
     <p class="fa-only"><strong>پایداری داده:</strong> پوشه‌های <code>data/</code> و <code>logs/</code> را حتماً mount کنید تا در صورت restart داده‌ها حفظ شوند.</p>
     <p class="en-only"><strong>Data persistence:</strong> Always mount <code>data/</code> and <code>logs/</code> so data survives container restarts.</p>
   </div>
-        </div>
-        <div id="adv-free" class="tab-content">
+</div>
+
+<!-- ══ PANEL: USAGE — MIN AMOUNT ══ -->
+<div class="page-panel" id="panel-usage-min-amount">
+  <div class="panel-header">
+    <p class="panel-breadcrumb fa-only">نحوه استفاده از پروژه</p>
+    <p class="panel-breadcrumb en-only">Using the Project</p>
+    <h2 class="panel-title fa-only">حداقل مبلغ</h2>
+    <h2 class="panel-title en-only">Minimum Amount</h2>
+    <p class="panel-desc fa-only">حداقل مبلغ قابل پرداخت برای هر درگاه.</p>
+    <p class="panel-desc en-only">Minimum payable amount per gateway.</p>
+  </div>
   <p class="section-sub fa-only">این سرویس پرداخت‌های زیر حداقل درگاه را رد می‌کند. اپلیکیشن شما باید این حالت را پیش از فراخوانی این سرویس تشخیص دهد.</p>
   <p class="section-sub en-only">This service rejects payments below each gateway's minimum. Your application must detect and handle free or low-value orders before calling this service.</p>
   <table class="env-table" style="margin-bottom:18px;">
@@ -1542,8 +1564,6 @@ docker run -d \
       <li class="en-only">If amount is zero or below 1,000 Rials, confirm the order directly in your application without going to the gateway.</li>
     </ul>
   </div>
-        </div>
-      </div>
 </div>
 
 </div>
@@ -1617,7 +1637,8 @@ function copyCode(btn) {
 // Hash routing on load
 let hash = location.hash.slice(1);
 if (hash === 'usage') hash = 'usage-start';
-const validPanels = ['intro','gateway','refund','sandbox','usage-start','usage-config','usage-api','usage-advanced'];
+if (hash === 'usage-advanced') hash = 'usage-failover';
+const validPanels = ['intro','gateway','refund','sandbox','usage-start','usage-config','usage-api','usage-failover','usage-retry','usage-docker','usage-min-amount'];
 if (validPanels.includes(hash)) {
   const btn = document.querySelector('[data-panel="' + hash + '"]');
   navigateTo(hash, btn);
@@ -1637,7 +1658,10 @@ const PANEL_LABELS = {
   'usage-start': { fa: 'راه‌اندازی', en: 'Quick Start' },
   'usage-config': { fa: 'پیکربندی', en: 'Configuration' },
   'usage-api': { fa: 'API', en: 'API' },
-  'usage-advanced': { fa: 'پیشرفته', en: 'Advanced' }
+  'usage-failover': { fa: 'Fail-over', en: 'Fail-over' },
+  'usage-retry': { fa: 'صف Retry', en: 'Retry Queue' },
+  'usage-docker': { fa: 'Docker', en: 'Docker' },
+  'usage-min-amount': { fa: 'حداقل مبلغ', en: 'Min Amount' }
 };
 
 let searchIndex = [];
