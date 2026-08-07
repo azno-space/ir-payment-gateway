@@ -11,7 +11,7 @@ function appendErrorLog(entry) {
 
     let logs = [];
     if (fs.existsSync(LOG_FILE)) {
-      try { logs = JSON.parse(fs.readFileSync(LOG_FILE, 'utf8')); } catch {}
+      try { logs = JSON.parse(fs.readFileSync(LOG_FILE, 'utf8')); } catch { /* corrupt log file, start fresh */ }
       if (!Array.isArray(logs)) logs = [];
     }
 

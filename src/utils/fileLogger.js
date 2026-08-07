@@ -28,7 +28,7 @@ function writeLog(level, args) {
     ensureLogDir();
     const line = formatLine(level, args);
     fs.appendFileSync(getLogFilePath(), line, 'utf8');
-  } catch (_) {}
+  } catch (_) { /* logging must never crash the app */ }
 }
 
 function deleteOldLogs() {
@@ -41,7 +41,7 @@ function deleteOldLogs() {
       const stat = fs.statSync(filePath);
       if (stat.mtimeMs < cutoff) fs.unlinkSync(filePath);
     }
-  } catch (_) {}
+  } catch (_) { /* logging must never crash the app */ }
 }
 
 function patchConsole() {

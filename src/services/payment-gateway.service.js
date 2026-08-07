@@ -87,7 +87,7 @@ const zibalVerifyPayment = async (trackId) => {
       )).data,
     );
   } catch (err) {
-    throw new Error(`Zibal verify network error: ${err.message}`);
+    throw new Error(`Zibal verify network error: ${err.message}`, { cause: err });
   }
 };
 
@@ -342,6 +342,8 @@ const getZarinpalUnverified = async () => {
 };
 
 module.exports = {
+  ZARINPAL_PAY_BASE,
+  ZARINPAL_SANDBOX_PAY_BASE,
   zibalRequestPayment,
   zibalVerifyPayment,
   zarinpalRequestPayment,
@@ -355,4 +357,8 @@ module.exports = {
   sepGetDailyRefundList,
   sepGetRefundStatus,
   getZarinpalUnverified,
+  escapeXml,
+  getCbUrl,
+  _buildZarinpalRequest,
+  _buildZarinpalVerify,
 };

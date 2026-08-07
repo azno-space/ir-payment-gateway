@@ -1,4 +1,6 @@
 const {
+  ZARINPAL_PAY_BASE,
+  ZARINPAL_SANDBOX_PAY_BASE,
   zibalVerifyPayment,
   zarinpalVerifyPayment,
   zarinpalSandboxRequestPayment,
@@ -27,6 +29,7 @@ const {
   sendWarningNotificationToBale,
   sendBaleRecoveryMessage,
 } = require('../services/notification.service');
+const { forwardErrorToAgent } = require('../services/agentSensor.service');
 
 const FRONT_BASE_URL = process.env.FRONT_BASE_URL || '';
 const FRONT_SUCCESS_URL = process.env.FRONT_SUCCESS_URL || (FRONT_BASE_URL ? `${FRONT_BASE_URL}/payment/success` : '');
@@ -83,9 +86,7 @@ async function attemptGatewayRequest(gateway, { amount, orderId, mobile, timeout
   if (gateway === 'zarinpal' || gateway === 'zarinpal_sandbox') {
     const isSandbox = gateway === 'zarinpal_sandbox';
     const requestFn = isSandbox ? zarinpalSandboxRequestPayment : zarinpalRequestPayment;
-    const payBase = isSandbox
-      ? 'https://sandbox.zarinpal.com/pg/StartPay/'
-      : 'https://payment.zarinpal.com/pg/StartPay/';
+    const payBase = isSandbox ? ZARINPAL_SANDBOX_PAY_BASE : ZARINPAL_PAY_BASE;
     const raw = await requestFn({ amount, orderId, mobile, timeout, retries });
     if (raw.data && raw.data.code === 100 && raw.data.authority) {
       return {
@@ -206,6 +207,7 @@ function notifyBaleFailure(errorDetails) {
     );
   });
   appendErrorLog({ type: 'payment_failure', ...errorDetails });
+  forwardErrorToAgent(errorDetails);
 }
 
 // ─── Webhook dispatch ─────────────────────────────────────────────────────────
@@ -382,7 +384,7 @@ async function handlePaymentCallback(req, res) {
       ? 'تراکنش توسط بانک لغو شد یا پرداخت توسط شما انصراف داده شد.'
       : 'اطلاعات لازم برای بررسی پرداخت در درخواست موجود نیست.';
 
-    notifyBaleFailure({ title, message, error: `Missing gateway or code\nParams: ${JSON.stringify(params)}` });
+    notifyBaleFailure({ title, message, error: `Missing gateway or code\nParams: ${JSON.stringify(params)}`, stage: 'callback_missing_params' });
     dispatchFailureWebhook({ orderId: orderIdFromQuery, gateway: gateway || 'unknown', code: code || '', reason: title });
 
     return res.status(400).send(renderErrorPage({
@@ -469,6 +471,7 @@ async function handlePaymentCallback(req, res) {
         title: 'خطا در تأیید پرداخت',
         message: 'نشست پرداخت منقضی شده یا یافت نشد. لطفاً با پشتیبانی تماس بگیرید.',
         gateway, code, orderId: orderIdFromQuery,
+        stage: 'session_not_found',
       };
       notifyBaleFailure(errorDetails);
       return res.status(400).send(renderErrorPage({
@@ -552,6 +555,7 @@ async function handlePaymentCallback(req, res) {
         title: 'تأیید پرداخت ناموفق بود',
         message: gatewayErrorMsg || 'Gateway verification failed',
         gateway, code, orderId, verifyResult,
+        stage: 'verify_failed',
       });
       logPaymentEvent('payment_error', {
         error_source: 'gateway', gateway, orderId,
