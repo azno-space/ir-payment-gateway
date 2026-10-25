@@ -7,6 +7,14 @@ and this project follows [Semantic Versioning](https://semver.org/spec/v2.0.0.ht
 
 ---
 
+## [Unreleased]
+
+### Removed
+- `POST /api/payments/admin/trigger-webhook` (it answered 410 since it accepted a caller-made paid amount).
+- Admin key as `?token=` in the URL: send `Authorization: Bearer <key>` or `x-admin-key`.
+
+---
+
 ## [1.0.0] — 2026-06-28
 
 ### Added

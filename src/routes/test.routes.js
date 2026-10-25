@@ -30,7 +30,7 @@ router.get('/session/:orderId', (req, res) => {
 
 // GET /api/test/queue
 router.get('/queue', (req, res) => {
-  const items = paymentQueue.getQueue();
+  const items = paymentQueue.getAllItems();
   res.json({ count: items.length, items });
 });
 

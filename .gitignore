@@ -1,8 +1,10 @@
-node_modules/
+node_modules
 .env
-.env.development
-.env.production
 data/
 logs/
 *.log
 .DS_Store
+.claude/*
+!.claude/settings.json
+.env.*
+!.env.example

@@ -87,7 +87,7 @@ const zibalVerifyPayment = async (trackId) => {
       )).data,
     );
   } catch (err) {
-    throw new Error(`Zibal verify network error: ${err.message}`);
+    throw new Error(`Zibal verify network error: ${err.message}`, { cause: err });
   }
 };
 
@@ -101,6 +101,19 @@ const ZARINPAL_PAY_BASE = ZARINPAL_SANDBOX
 
 const ZARINPAL_SANDBOX_API_BASE = 'https://sandbox.zarinpal.com/pg/v4/payment/';
 const ZARINPAL_SANDBOX_PAY_BASE = 'https://sandbox.zarinpal.com/pg/StartPay/';
+
+// A failed Zarinpal request → { errors: [...] } with the most specific message the bank gave.
+const ZARINPAL_AUTH_HELP = 'Zarinpal authentication failed (HTTP 401). Possible causes: invalid ZARINPAL_MERCHANT, callback URL domain not registered in Zarinpal panel, or IP not whitelisted. Use gateway=zarinpal_sandbox for local testing.';
+const asList = (errors) => (Array.isArray(errors) ? errors : [JSON.stringify(errors)]);
+const validationMessage = (body) => body?.errors?.message;
+
+function zarinpalRequestError(err) {
+  const { status, data: body } = err.response || {};
+  if (status === 401) return { errors: [ZARINPAL_AUTH_HELP] };
+  if (status === 422 && validationMessage(body)) return { errors: [`Zarinpal validation error: ${validationMessage(body)}`] };
+  if (body?.errors) return { errors: asList(body.errors) };
+  return { errors: [err.message] };
+}
 
 function _buildZarinpalRequest({ apiBase, payBase, merchantId, amount, orderId, mobile, timeout, retries }) {
   if (!merchantId) return Promise.resolve({ errors: ['ZARINPAL_MERCHANT not configured'] });
@@ -120,20 +133,7 @@ function _buildZarinpalRequest({ apiBase, payBase, merchantId, amount, orderId, 
         { timeout: timeout || REQUEST_TIMEOUT_MS },
       )).data,
     retries || REQUEST_RETRIES,
-  ).catch((err) => {
-    const status = err.response?.status;
-    const body = err.response?.data;
-    if (status === 401) {
-      return { errors: ['Zarinpal authentication failed (HTTP 401). Possible causes: invalid ZARINPAL_MERCHANT, callback URL domain not registered in Zarinpal panel, or IP not whitelisted. Use gateway=zarinpal_sandbox for local testing.'] };
-    }
-    if (status === 422 && body?.errors?.message) {
-      return { errors: [`Zarinpal validation error: ${body.errors.message}`] };
-    }
-    if (body?.errors) {
-      return { errors: Array.isArray(body.errors) ? body.errors : [JSON.stringify(body.errors)] };
-    }
-    return { errors: [err.message] };
-  });
+  ).catch(zarinpalRequestError);
 }
 
 function _buildZarinpalVerify({ apiBase, merchantId, authority, amount }) {
@@ -314,6 +314,68 @@ const sepGetRefundStatus = async ({ refundId }) => {
   return soapPost('http://tempuri.org/IsrvRefundV2/GetRefundStatus', xml);
 };
 
+const sepGetRefundDetail = async ({ refundId }) => {
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <tem:GetRefundDetail>
+      <tem:userName>${escapeXml(SEP_USERNAME)}</tem:userName>
+      <tem:password>${escapeXml(SEP_PASSWORD)}</tem:password>
+      <tem:refundId>${escapeXml(refundId)}</tem:refundId>
+      <tem:termId>${escapeXml(SEP_TERMINAL_ID)}</tem:termId>
+    </tem:GetRefundDetail>
+  </soapenv:Body>
+</soapenv:Envelope>`;
+
+  return soapPost('http://tempuri.org/IsrvRefundV2/GetRefundDetail', xml);
+};
+
+// Status of a refund you registered but whose refundId you never got (e.g. Refund_Reg answered
+// DuplicateRequest): looked up by the requestId you sent to Refund_Reg. GetDailyRefundList only
+// covers today, so this is the only way to find an older one.
+const sepGetRefundStatusByRequestId = async ({ requestId }) => {
+  if (!(Number(requestId) > 0)) throw new Error(`sepGetRefundStatusByRequestId: invalid requestId ${requestId}`);
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <tem:GetRefundStatusByRequestId>
+      <tem:userName>${escapeXml(SEP_USERNAME)}</tem:userName>
+      <tem:password>${escapeXml(SEP_PASSWORD)}</tem:password>
+      <tem:requestId>${Number(requestId)}</tem:requestId>
+      <tem:termId>${escapeXml(SEP_TERMINAL_ID)}</tem:termId>
+    </tem:GetRefundStatusByRequestId>
+  </soapenv:Body>
+</soapenv:Envelope>`;
+
+  return soapPost('http://tempuri.org/IsrvRefundV2/GetRefundStatusByRequestId', xml);
+};
+
+// Resets a failed refund back to Start so SEP processes it again. SEP's own warning: if the
+// previous attempt's real outcome is unknown, a refresh can transfer the money twice — call it
+// only for a refund SEP has definitively failed (RefundStatus=Fail).
+const sepRefreshRefundRequest = async ({ partialRefundInfoId, description = '' }) => {
+  if (!(Number(partialRefundInfoId) > 0)) {
+    throw new Error(`sepRefreshRefundRequest: invalid partialRefundInfoId ${partialRefundInfoId}`);
+  }
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:tem="http://tempuri.org/">
+  <soapenv:Header/>
+  <soapenv:Body>
+    <tem:RefreshRefundRequestByPartialRefundInfoId>
+      <tem:userName>${escapeXml(SEP_USERNAME)}</tem:userName>
+      <tem:password>${escapeXml(SEP_PASSWORD)}</tem:password>
+      <tem:description>${escapeXml(description)}</tem:description>
+      <tem:partialRefundInfoId>${Number(partialRefundInfoId)}</tem:partialRefundInfoId>
+      <tem:refundTerminalNumber>${Number(SEP_TERMINAL_ID)}</tem:refundTerminalNumber>
+    </tem:RefreshRefundRequestByPartialRefundInfoId>
+  </soapenv:Body>
+</soapenv:Envelope>`;
+
+  return soapPost('http://tempuri.org/IsrvRefundV2/RefreshRefundRequestByPartialRefundInfoId', xml);
+};
+
 // Returns a list of unverified Zarinpal payments (paid but verify not called yet).
 // Useful for recovering payments where the callback was missed.
 const ZARINPAL_UNVERIFIED_URL = ZARINPAL_SANDBOX
@@ -321,7 +383,7 @@ const ZARINPAL_UNVERIFIED_URL = ZARINPAL_SANDBOX
   : 'https://payment.zarinpal.com/pg/v4/payment/unVerified.json';
 
 const getZarinpalUnverified = async () => {
-  if (!ZARINPAL_MERCHANT) return { ok: false, error: 'ZARINPAL_MERCHANT not configured', authorities: [] };
+  if (!ZARINPAL_MERCHANT) return { ok: false, code: 'not_configured', error: 'ZARINPAL_MERCHANT not configured', authorities: [] };
   try {
     const res = await paymentAxios.post(
       ZARINPAL_UNVERIFIED_URL,
@@ -342,6 +404,8 @@ const getZarinpalUnverified = async () => {
 };
 
 module.exports = {
+  ZARINPAL_PAY_BASE,
+  ZARINPAL_SANDBOX_PAY_BASE,
   zibalRequestPayment,
   zibalVerifyPayment,
   zarinpalRequestPayment,
@@ -354,5 +418,12 @@ module.exports = {
   sepRefundExec,
   sepGetDailyRefundList,
   sepGetRefundStatus,
+  sepGetRefundDetail,
+  sepGetRefundStatusByRequestId,
+  sepRefreshRefundRequest,
   getZarinpalUnverified,
+  escapeXml,
+  getCbUrl,
+  _buildZarinpalRequest,
+  _buildZarinpalVerify,
 };

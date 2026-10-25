@@ -1,0 +1,5 @@
+{
+  "src/services/payment-gateway.service.js": "three bank adapters (Zibal, Zarinpal, SEP) in one file; one file per bank is a later package, after the callback and verify work is on main",
+  "src/controllers/callbackFlow.js": "the bank callback flow, one responsibility; already split out of payment.controller.js on 2026-10-24",
+  "src/sep/refundErrors.js": "a data table of SEP refund error codes and texts, not logic"
+}
