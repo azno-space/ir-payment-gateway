@@ -1,0 +1,42 @@
+{
+  "name": "ir-payment-gateway",
+  "version": "1.0.0",
+  "description": "A lightweight, database-free payment gateway middleware for Iranian payment providers (Zibal, Zarinpal, SEP/Saman). Verify payments and notify your application via webhooks.",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js"
+  },
+  "keywords": [
+    "payment",
+    "gateway",
+    "iran",
+    "zarinpal",
+    "zibal",
+    "sep",
+    "saman",
+    "shaparak",
+    "webhook"
+  ],
+  "author": "Seyyed Sadrodin Bigdeli",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/azno-space/ir-payment-gateway.git"
+  },
+  "homepage": "https://azno-space.github.io/ir-payment-gateway",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "axios": "^1.7.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "helmet": "^7.1.0",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
